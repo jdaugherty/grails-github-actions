@@ -1,8 +1,12 @@
 #!/bin/bash
 # $1 == GH_TOKEN
 
-echo -n "Determining release version: "
-release_version=${GITHUB_REF:11}
+if [ -z "$RELEASE_VERSION" ]; then
+    echo -n "Determining release version: "
+    release_version=${GITHUB_REF:11}
+else
+    release_version=${RELEASE_VERSION}
+fi
 echo $release_version
 
 if [ -n "$MICRONAUT_BUILD_EMAIL" ]; then
