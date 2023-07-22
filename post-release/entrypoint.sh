@@ -56,12 +56,20 @@ echo "Getting issues closed"
 issues_closed=`curl -s "https://api.github.com/repos/$GITHUB_REPOSITORY/issues?milestone=$milestone_number&state=closed" | jq '.[] | "* \(.title) (#\(.number))"' | sed -e 's/^"\(.*\)"$/\1/g'`
 echo $issues_closed
 
-echo -n "Getting release url: "
-release_url=`cat $GITHUB_EVENT_PATH | jq '.release.url' | sed -e 's/^"\(.*\)"$/\1/g'`
+if [ -z "$RELEASE_URL" ]; then
+  echo -n "Getting release url: "
+  release_url=`cat $GITHUB_EVENT_PATH | jq '.release.url' | sed -e 's/^"\(.*\)"$/\1/g'`
+else 
+  release_url=$RELEASE_URL
+fi
 echo $release_url
 
 echo -n "Getting release body: "
-release_body=`cat $GITHUB_EVENT_PATH | jq '.release.body' | sed -e 's/^"\(.*\)"$/\1/g'`
+if [ -z "$RELEASE_URL" ]; then
+  release_body=$(curl -i --request PATCH -H "Authorization: Bearer $1" -H "Content-Type: application/json" $release_url | jq '.release.body' | sed -e 's/^"\(.*\)"$/\1/g'`)
+else
+  release_body=`cat $GITHUB_EVENT_PATH | jq '.release.body' | sed -e 's/^"\(.*\)"$/\1/g'`
+fi
 echo $release_body
 
 echo -n "Updating release body: "
