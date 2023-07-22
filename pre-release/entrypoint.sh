@@ -23,9 +23,14 @@ git config --global user.email "$GIT_USER_EMAIL"
 git config --global user.name "$GIT_USER_NAME"
 git fetch
 
-echo -n "Determining target branch: "
-target_branch=`cat $GITHUB_EVENT_PATH | jq '.release.target_commitish' | sed -e 's/^"\(.*\)"$/\1/g'`
-echo $target_branch
+if [ -z "$TARGET_BRANCH" ]; then
+    echo -n "Determining target branch: "
+    target_branch=`cat $GITHUB_EVENT_PATH | jq '.release.target_commitish' | sed -e 's/^"\(.*\)"$/\1/g'`
+    echo $target_branch
+else 
+    target_branch=$TARGET_BRANCH
+fi
+
 git checkout $target_branch
 
 echo "Setting release version in gradle.properties"
@@ -41,6 +46,10 @@ git tag -fa v${release_version} -m "Release v${release_version}"
 git push origin $target_branch --tags
 
 echo "Closing again the release after updating the tag"
-release_url=`cat $GITHUB_EVENT_PATH | jq '.release.url' | sed -e 's/^"\(.*\)"$/\1/g'`
+if [ -z "$RELEASE_URL" ]; then
+    release_url=`cat $GITHUB_EVENT_PATH | jq '.release.url' | sed -e 's/^"\(.*\)"$/\1/g'`
+else
+    release_url=$RELEASE_URL
+fi
 echo $release_url
 curl -s --request PATCH -H "Authorization: Bearer $1" -H "Content-Type: application/json" $release_url --data "{\"draft\": false}"
