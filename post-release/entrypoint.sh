@@ -45,17 +45,6 @@ fi
 echo $target_branch
 git checkout $target_branch
 
-echo -n "Retrieving current milestone number: "
-milestone_number=`curl -s https://api.github.com/repos/$GITHUB_REPOSITORY/milestones | jq -c ".[] | select (.title == \"$release_version\") | .number" | sed -e 's/"//g'`
-echo $milestone_number
-
-echo "Closing current milestone"
-curl -s --request PATCH -H "Authorization: Bearer $1" -H "Content-Type: application/json" https://api.github.com/repos/$GITHUB_REPOSITORY/milestones/$milestone_number --data '{"state":"closed"}'
-
-echo "Getting issues closed"
-issues_closed=`curl -s "https://api.github.com/repos/$GITHUB_REPOSITORY/issues?milestone=$milestone_number&state=closed" | jq '.[] | "* \(.title) (#\(.number))"' | sed -e 's/^"\(.*\)"$/\1/g'`
-echo $issues_closed
-
 if [ -z "$RELEASE_URL" ]; then
   echo -n "Getting release url: "
   release_url=`cat $GITHUB_EVENT_PATH | jq '.release.url' | sed -e 's/^"\(.*\)"$/\1/g'`
@@ -77,8 +66,21 @@ release_body="${release_body}\r\n${issues_closed}"
 echo $release_body
 curl -i --request PATCH -H "Authorization: Bearer $1" -H "Content-Type: application/json" $release_url --data "{\"body\": \"$release_body\"}"
 
-echo "Creating new milestone"
-curl -s --request POST -H "Authorization: Bearer $1" -H "Content-Type: application/json" "https://api.github.com/repos/$GITHUB_REPOSITORY/milestones" --data "{\"title\": \"$next_version\"}"
+echo -n "Retrieving current milestone number: "
+milestone_number=`curl -s https://api.github.com/repos/$GITHUB_REPOSITORY/milestones | jq -c ".[] | select (.title == \"$release_version\") | .number" | sed -e 's/"//g'`
+echo $milestone_number
+
+if [ -n "$milestone_number" ]; then
+  echo "Closing current milestone"
+  curl -s --request PATCH -H "Authorization: Bearer $1" -H "Content-Type: application/json" https://api.github.com/repos/$GITHUB_REPOSITORY/milestones/$milestone_number --data '{"state":"closed"}'
+
+  echo "Creating new milestone"
+  curl -s --request POST -H "Authorization: Bearer $1" -H "Content-Type: application/json" "https://api.github.com/repos/$GITHUB_REPOSITORY/milestones" --data "{\"title\": \"$next_version\"}"
+
+  echo "Getting issues closed"
+  issues_closed=`curl -s "https://api.github.com/repos/$GITHUB_REPOSITORY/issues?milestone=$milestone_number&state=closed" | jq '.[] | "* \(.title) (#\(.number))"' | sed -e 's/^"\(.*\)"$/\1/g'`
+  echo $issues_closed
+fi
 
 echo "Setting new snapshot version"
 sed -i "s/^projectVersion.*$/projectVersion\=${next_version}$SNAPSHOT_SUFFIX/" gradle.properties
