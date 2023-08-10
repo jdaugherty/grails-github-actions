@@ -60,7 +60,7 @@ if [ -z "$is_version_published" ]; then
 
   if [ -f "CHANGELOG.md" ]; then
     echo "Changelog generated"
-    echo "::set-output name=generated_changelog::true"
+    echo "generated_changelog=true" >> $GITHUB_OUTPUT
   else
     echo "Changelog not generated"
     echo "generated_changelog=false" >> $GITHUB_OUTPUT
