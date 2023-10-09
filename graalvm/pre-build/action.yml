@@ -1,0 +1,47 @@
+name: Pre-build steps for graalvm workflow
+description: Runs pre-build steps for graalvm workflow
+inputs:
+  distribution:
+    description: 'GraalVM distribution (graalvm, graalvm-community, or mandrel)'
+    required: false
+  java:
+    description: 'Java version'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    # https://github.com/actions/virtual-environments/issues/709
+    - name: "Free disk space"
+      shell: bash
+      run: |
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo apt-get clean
+        df -h
+
+    - name: "Checkout repository"
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: "Set up $JAVA_HOME for Gradle"
+      uses: actions/setup-java@v3.12.0
+      with:
+        distribution: 'oracle'
+        java-version: '17'
+
+    - name: "Set up $GRAALVM_HOME for Native Build Tools"
+      uses: graalvm/setup-graalvm@v1.1.4.2
+      with:
+        distribution: ${{ inputs.distribution }}
+        java-version: ${{ inputs.java }}
+        components: 'native-image'
+        set-java-home: 'false'
+
+    - name: "Set up Gradle"
+      uses: gradle/gradle-build-action@v2
+
+    - name: "Optional setup step"
+      shell: bash
+      run: |
+        [ -f ./setup.sh ] && ./setup.sh || [ ! -f ./setup.sh ]

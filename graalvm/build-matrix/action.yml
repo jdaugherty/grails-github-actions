@@ -1,0 +1,40 @@
+name: Build matrix for graalvm workflow
+description: Creates matrix for graalvm workflow
+outputs:
+  matrix:
+    description: "Matrix for native tests"
+    value: ${{ steps.set-matrix.outputs.matrix }}
+runs:
+  using: "composite"
+  steps:
+    - name: "Checkout repository"
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: "Set up $JAVA_HOME for Gradle"
+      uses: actions/setup-java@v3.12.0
+      with:
+        distribution: 'oracle'
+        java-version: '17'
+
+    - name: "Setup Gradle"
+      uses: gradle/gradle-build-action@v2
+
+    - name: "Set Matrix"
+      id: set-matrix
+      shell: bash
+      run: |
+        echo "Searching for native test tasks ..."
+        gradleTasks=$(./gradlew tasks --no-daemon --all)
+        if [[ "$gradleTasks" == *"nativeTest"* ]]; then
+          echo "Found native test tasks"
+          nativeTestTasks=$(echo "$gradleTasks" | grep -w "nativeTest" | sed 's/\(.*\) - Executes the test native binary/\"\1\"/' | tr '\n' ',' | sed 's/.$//')
+          nativeTestTasksEntry="\"native_test_task\":[$(echo $nativeTestTasks)]"
+        else
+          echo "Native test tasks not found"
+          nativeTestTasksEntry="\"native_test_task\":[\"\"]"
+        fi
+        matrixValue="{$(echo $nativeTestTasksEntry)}"
+        echo "Created matrix: $matrixValue"
+        echo "matrix=$matrixValue" >> $GITHUB_OUTPUT
