@@ -5,16 +5,12 @@ if [ -z "$SNAPSHOT_SUFFIX" ]; then
   SNAPSHOT_SUFFIX="-SNAPSHOT"
 fi
 
-if [ -n "$MICRONAUT_BUILD_EMAIL" ]; then
-    GIT_USER_EMAIL=$MICRONAUT_BUILD_EMAIL
-fi
-
 if [ -z "$GIT_USER_EMAIL" ]; then
    GIT_USER_EMAIL="${GITHUB_ACTOR}@users.noreply.github.com"
 fi
 
 if [ -z "$GIT_USER_NAME" ]; then
-   GIT_USER_NAME="micronaut-build"
+   GIT_USER_NAME="grails-build"
 fi
 
 echo -n "Determining release version: "
