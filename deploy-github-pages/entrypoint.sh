@@ -81,6 +81,37 @@ publish_artifacts() {
   git add --verbose "${PUBLISH_PATH}"/*
 }
 
+is_highest_version() {
+  local new_folder="$1"   # e.g. "7.0.x"
+  
+  # Strip the trailing ".x" → "7.0", then parse into major/minor
+  local new_major new_minor
+  local folder_no_x="${new_folder%.x}"  # "7.0"
+  IFS="." read -r new_major new_minor <<< "$folder_no_x"
+
+  # Loop over all folders that look like 7.0.x
+  for folder in [0-9]*.x; do
+    [[ -d "$folder" ]] || continue  # skip if not a real folder
+
+    # Use a regex match to parse existing folders into major/minor
+    if [[ "$folder" =~ ^([0-9]+)\.([0-9]+)\.x$ ]]; then
+      local existing_major="${BASH_REMATCH[1]}"
+      local existing_minor="${BASH_REMATCH[2]}"
+
+      # Compare numeric major/minor
+      if (( existing_major > new_major )); then
+        # Found a folder with a higher major
+        return 1
+      elif (( existing_major == new_major && existing_minor > new_minor )); then
+        # Found a folder with same major but higher minor
+        return 1
+      fi
+    fi
+  done
+
+  return 0
+}
+
 set -e
 
 # GH_TOKEN - the token to access the github repository, can be GITHUB_TOKEN if the same repo and permissions are set correctly
@@ -209,14 +240,18 @@ else
 
   # Publish to the latest release folder if needed 
   if [[ "$SKIP_RELEASE_FOLDER" == "false" ]]; then
-    BASE_PUBLISH_PATH="./${LAST_RELEASE_FOLDER}"
-    if [ -n "${TARGET_SUBFOLDER}" ]; then
-      PUBLISH_PATH="./${LAST_RELEASE_FOLDER}/${TARGET_SUBFOLDER}"
-    else    
-      PUBLISH_PATH="./${LAST_RELEASE_FOLDER}"
+    if is_highest_version "${versionFolder}"; then
+      BASE_PUBLISH_PATH="./${LAST_RELEASE_FOLDER}"
+      if [ -n "${TARGET_SUBFOLDER}" ]; then
+        PUBLISH_PATH="./${LAST_RELEASE_FOLDER}/${TARGET_SUBFOLDER}"
+      else    
+        PUBLISH_PATH="./${LAST_RELEASE_FOLDER}"
+      fi
+      publish_artifacts
+      echo "Published a copy of documentation to ${PUBLISH_PATH}"
+    else
+      echo "Skipping documentation copy to '${LAST_RELEASE_FOLDER}' because ${versionFolder} is NOT the highest."
     fi
-    publish_artifacts
-    echo "Published a copy of documentation to ${PUBLISH_PATH}"
   else 
     echo "Skipping documentation copy to ${LAST_RELEASE_FOLDER}"
   fi
