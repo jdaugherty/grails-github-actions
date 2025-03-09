@@ -1,0 +1,5 @@
+name: 'Grails github-pages deployment action'
+description: 'Copies documentation to the gh-pages branch'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
