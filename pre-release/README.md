@@ -1,4 +1,4 @@
-# Micronaut pre-release action
+# Grails pre-release action
 
 Performs some actions before doing a release
 

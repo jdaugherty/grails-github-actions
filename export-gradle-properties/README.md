@@ -1,4 +1,4 @@
-# Micronaut export-gradle-properties action
+# Grails export-gradle-properties action
 
 Exports `gradle.properties` as environment variables.
 

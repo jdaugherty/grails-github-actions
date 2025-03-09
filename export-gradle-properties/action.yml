@@ -1,4 +1,4 @@
-name: 'Micronaut export-gradle-properties action'
+name: 'Grails export-gradle-properties action'
 description: 'Exposes Gradle Properties as Environment Variables'
 inputs:
   file:

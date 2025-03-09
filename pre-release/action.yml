@@ -1,4 +1,4 @@
-name: 'Micronaut pre-release action'
+name: 'Grails pre-release action'
 description: 'Performs some actions before doing a release'
 inputs:
   token:
