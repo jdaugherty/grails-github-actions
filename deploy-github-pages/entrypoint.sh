@@ -173,7 +173,7 @@ set_value_or_error "${PURGE_BY_BASE_PATH}" "false" "PURGE_BY_BASE_PATH" "true fa
 set_value_or_error "${GITHUB_WORKSPACE}" "" "GITHUB_WORKSPACE"
 
 if [[ "$SKIP_SNAPSHOT_FOLDER" == "true" && "$GRADLE_PUBLISH_RELEASE" == "false" ]]; then
-  echo "Snapshot detected and snapshot publishing is disabnled. Skipping documentation deployment."
+  echo "Snapshot detected and snapshot publishing is disabled. Skipping documentation deployment."
   exit 0
 fi
 
