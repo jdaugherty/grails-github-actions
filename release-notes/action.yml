@@ -1,4 +1,4 @@
-name: 'Micronaut release notes action'
+name: 'Grails release notes action'
 description: 'Updates a draft release notes on every PR merge'
 inputs:
   token:

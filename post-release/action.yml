@@ -1,4 +1,4 @@
-name: 'Micronaut post-release action'
+name: 'Grails post-release action'
 description: 'Performs some actions after doing a release'
 inputs:
   token:

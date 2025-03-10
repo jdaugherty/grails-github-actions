@@ -1,4 +1,4 @@
-# Micronaut release notes action
+# Grails release notes action
 
 Updates a draft release with the latest release notes
 
