@@ -80,10 +80,10 @@ git add gradle.properties
 
 if [[ -n "${RELEASE_SCRIPT_PATH}" && -x "${RELEASE_SCRIPT_PATH}" ]]; then
   echo "Executing additional release script at ${RELEASE_SCRIPT_PATH}"
-  "$RELEASE_SCRIPT_PATH"
+  "${RELEASE_SCRIPT_PATH}"
 else
   if [[ -n "${RELEASE_SCRIPT_PATH}" ]]; then
-    echo "ERROR: RELEASE_SCRIPT_PATH is set to '$THIRD_PARTY_SCRIPT_PATH' but is not executable or does not exist." >&2
+    echo "ERROR: RELEASE_SCRIPT_PATH is set to '${RELEASE_SCRIPT_PATH}' but is not executable or does not exist." >&2
     exit 1
   fi
 fi
