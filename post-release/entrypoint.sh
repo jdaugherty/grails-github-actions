@@ -64,9 +64,9 @@ fi
 echo "Release Version: ${RELEASE_VERSION}"
 
 echo -n "Determining next version: "
-next_version=`/increment_version.sh -p ${RELEASE_VERSION}`
-echo "${next_version}"
-echo "next_version=${next_version}" >> $GITHUB_OUTPUT
+export NEXT_VERSION=`/increment_version.sh -p ${RELEASE_VERSION}`
+echo "${NEXT_VERSION}"
+echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
 
 echo "Configuring git"
 git config --global --add safe.directory "${GIT_SAFE_DIR}"
@@ -88,7 +88,7 @@ curl -s --request PATCH -H "Authorization: Bearer $1" -H "Content-Type: applicat
 set -e
 
 echo "Setting new snapshot version"
-sed -i "s/^projectVersion.*$/projectVersion\=${next_version}-SNAPSHOT/" gradle.properties
+sed -i "s/^projectVersion.*$/projectVersion\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
 cat gradle.properties
 git add gradle.properties
 
@@ -103,7 +103,7 @@ else
 fi
 
 echo "Committing and pushing"
-git commit -m "chore: Bump version to ${next_version}-SNAPSHOT"
+git commit -m "chore: Bump version to ${NEXT_VERSION}-SNAPSHOT"
 git push origin "${TARGET_BRANCH}"
 
 # Clean up .git artifacts we've created as root (so non-docker actions that follow can use git without re-cloning)
