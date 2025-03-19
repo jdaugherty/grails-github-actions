@@ -39,14 +39,15 @@ set_value_or_error() {
     fi
   fi
 
-  eval "$variableName=\"\$decidedValue\""
+  # Export the variable so all variables are available in third party scripts
+  eval "export $variableName=\"\$decidedValue\""
 }
 
 set -e
 
 set_value_or_error "${RELEASE_VERSION}" "${GITHUB_REF:11}" "RELEASE_VERSION"
-if [[ ! "$VERSION" =~ ^v?[^.]+\.[^.]+\.[^.]+$ ]]; then
-  echo "ERROR: VERSION must be in the format 'X.X.X' or 'vX.X.X'. Got: '${RELEASE_VERSION}'"
+if [[ ! "${RELEASE_VERSION}" =~ ^v?[^.]+\.[^.]+\.[^.]+$ ]]; then
+  echo "ERROR: RELEASE_VERSION must be in the format 'X.X.X' or 'vX.X.X'. Got: '${RELEASE_VERSION}'"
   exit 1
 fi
 if [[ "${RELEASE_VERSION}" == v* ]]; then
