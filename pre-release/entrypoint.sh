@@ -46,7 +46,7 @@ set_value_or_error() {
 set -e
 
 set_value_or_error "${RELEASE_VERSION}" "${GITHUB_REF:11}" "RELEASE_VERSION"
-if [[ ! "$VERSION" =~ ^v?[^.]+\.[^.]+\.[^.]+$ ]]; then
+if [[ ! "${RELEASE_VERSION}" =~ ^v?[^.]+\.[^.]+\.[^.]+$ ]]; then
   echo "ERROR: RELEASE_VERSION must be in the format 'X.X.X' or 'vX.X.X'. Got: '${RELEASE_VERSION}'"
   exit 1
 fi
