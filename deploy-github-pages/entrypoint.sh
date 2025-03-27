@@ -180,7 +180,7 @@ fi
 GIT_REPO_URL="https://${GITHUB_USER_NAME}:${GH_TOKEN}@github.com/${TARGET_REPOSITORY}.git"
 
 # Initialize a Git Repository under a separate location from the existing checkout that will be the gh-pages branch
-cd $GITHUB_WORKSPACE
+cd "${GITHUB_WORKSPACE}"
 git init
 git config --global user.email "${GITHUB_USER_NAME}@users.noreply.github.com"
 git config --global user.name "${GITHUB_USER_NAME}"
@@ -204,8 +204,8 @@ fi
 # grails repos have a convention that they create a ghpages.html to replace the root index.html
 if [[ -f "../${SOURCE_FOLDER}/ghpages.html" ]]; then
   echo "${SOURCE_FOLDER}/ghpages.html detected, replacing root index.html"
-  cp "../${SOURCE_FOLDER}/ghpages.html" ../index.html
-  git add ../index.html
+  cp "../${SOURCE_FOLDER}/ghpages.html" index.html
+  git add index.html
 fi
 
 # stage the documents
