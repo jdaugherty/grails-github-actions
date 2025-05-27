@@ -70,12 +70,12 @@ echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
 
 echo "Configuring git"
 git config --global --add safe.directory "${GIT_SAFE_DIR}"
-git config --global user.email "${GITHUB_USER_NAME}@users.noreply.github.com"
-git config --global user.name "${GITHUB_USER_NAME}"
+git config --global user.email "${GIT_USER_NAME}@users.noreply.github.com"
+git config --global user.name "${GIT_USER_NAME}"
 git fetch
 
 echo -n "Determining target branch: "
-set_value_or_error "${TARGET_BRANCH}" `cat $GITHUB_EVENT_PATH | jq '.release.target_commitish' | sed -e 's/^"\(.*\)"$/\1/g'` "${TARGET_BRANCH}"
+set_value_or_error "${TARGET_BRANCH}" `cat $GITHUB_EVENT_PATH | jq '.release.target_commitish' | sed -e 's/^"\(.*\)"$/\1/g'` "TARGET_BRANCH"
 echo "${TARGET_BRANCH}"
 git checkout "${TARGET_BRANCH}"
 
@@ -90,11 +90,12 @@ set -e
 echo "Setting new snapshot version"
 sed -i "s/^projectVersion.*$/projectVersion\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
 cat gradle.properties
+echo "\n"
 git add gradle.properties
 
-if [[ -n "${RELEASE_SCRIPT_PATH}" && -x "${RELEASE_SCRIPT_PATH}" ]]; then
-  echo "Executing additional release script at ${RELEASE_SCRIPT_PATH}"
-  "${RELEASE_SCRIPT_PATH}"
+if [[ -n "${RELEASE_SCRIPT_PATH}" && -x "${GITHUB_WORKSPACE}/${RELEASE_SCRIPT_PATH}" ]]; then
+  echo "Executing additional release script at ${GITHUB_WORKSPACE}/${RELEASE_SCRIPT_PATH}"
+  "${GITHUB_WORKSPACE}/${RELEASE_SCRIPT_PATH}"
 else
   if [[ -n "${RELEASE_SCRIPT_PATH}" ]]; then
     echo "ERROR: RELEASE_SCRIPT_PATH is set to '${RELEASE_SCRIPT_PATH}' but is not executable or does not exist." >&2
