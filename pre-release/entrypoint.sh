@@ -91,7 +91,12 @@ else
 fi
 
 echo "Pushing release version and recreating v${RELEASE_VERSION} tag"
-git commit -m "[skip ci] Release v${RELEASE_VERSION}"
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  git commit -m "[skip ci] Release v${RELEASE_VERSION}"
+else
+  echo "No changes to commit - was the release version already set?"
+fi
+
 git push origin "${TARGET_BRANCH}"
 git tag -fa v${RELEASE_VERSION} -m "Release v${RELEASE_VERSION}"
 git push origin "${TARGET_BRANCH}"
