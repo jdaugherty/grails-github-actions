@@ -69,10 +69,7 @@ git config --global user.email "${GIT_USER_NAME}@users.noreply.github.com"
 git config --global user.name "${GIT_USER_NAME}"
 git fetch
 
-echo -n "Determining target branch: "
-set_value_or_error "${TARGET_BRANCH}" `cat $GITHUB_EVENT_PATH | jq '.release.target_commitish' | sed -e 's/^"\(.*\)"$/\1/g'` "TARGET_BRANCH"
-echo "${TARGET_BRANCH}"
-git checkout "${TARGET_BRANCH}"
+git checkout "v${RELEASE_VERSION}"
 
 echo "Setting release version in gradle.properties"
 sed -i "s/^projectVersion.*$/projectVersion\=${RELEASE_VERSION}/" gradle.properties
@@ -97,9 +94,7 @@ else
   echo "No changes to commit - was the release version already set?"
 fi
 
-git push origin "${TARGET_BRANCH}"
 git tag -fa v${RELEASE_VERSION} -m "Release v${RELEASE_VERSION}"
-git push origin "${TARGET_BRANCH}"
 # force push the updated tag
 git push origin "v${RELEASE_VERSION}" --force
 
