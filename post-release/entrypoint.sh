@@ -79,6 +79,9 @@ set_value_or_error "${TARGET_BRANCH}" `cat $GITHUB_EVENT_PATH | jq '.release.tar
 echo "${TARGET_BRANCH}"
 git checkout "${TARGET_BRANCH}"
 
+echo "Merging Tag v${RELEASE_VERSION} into ${TARGET_BRANCH}"
+git merge --no-ff --no-edit "${TAG_NAME}"
+
 set +e
 echo -n "Retrieving current milestone number: "
 milestone_number=`curl -s https://api.github.com/repos/${GITHUB_REPOSITORY}/milestones | jq -c ".[] | select (.title == \"${RELEASE_VERSION}\") | .number" | sed -e 's/"//g'`
@@ -103,8 +106,10 @@ else
   fi
 fi
 
-echo "Committing and pushing"
-git commit -m "chore: Bump version to ${NEXT_VERSION}-SNAPSHOT"
+echo "Committing next version ${NEXT_VERSION}-SNAPSHOT"
+git commit -m "[skip ci] Bump version to ${NEXT_VERSION}-SNAPSHOT"
+
+echo "Pushing changes to ${TARGET_BRANCH}"
 git push origin "${TARGET_BRANCH}"
 
 # Clean up .git artifacts we've created as root (so non-docker actions that follow can use git without re-cloning)
