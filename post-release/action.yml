@@ -129,7 +129,7 @@ runs:
           fi
         fi
         
-        if git diff --quiet --exit-code; then
+        if git diff-index --quiet HEAD --; then
           git checkout --
           echo "::notice:: No version change – nothing to commit, branch/PR skipped."
           exit 0
