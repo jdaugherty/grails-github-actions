@@ -4,6 +4,8 @@
 # permissions:
 #    issues: write # to close milestone (script will silently fail if not set)
 #    contents: write # to commit
+#
+# This script expects the github action to have checked out the repository with fetch-depth: 0
 
 set_value_or_error() {
   local value="$1"
@@ -47,11 +49,9 @@ set -e
 
 set_value_or_error "${GIT_USER_NAME}" "${GITHUB_ACTOR}" "GIT_USER_NAME"
 set_value_or_error "${GITHUB_WORKSPACE}" "." "GIT_SAFE_DIR"
-
-# for testing: git remote get-url origin | sed -E 's#(git@|https://)github.com[:/](.*).git#\2#'
 set_value_or_error "${GITHUB_REPOSITORY}" "" "GITHUB_REPOSITORY"
-
 set_value_or_error "${RELEASE_VERSION}" "${GITHUB_REF:11}" "RELEASE_VERSION"
+
 if [[ ! "${RELEASE_VERSION}" =~ ^v?[^.]+\.[^.]+\.[^.]+$ ]]; then
   echo "ERROR: RELEASE_VERSION must be in the format 'X.X.X' or 'vX.X.X'. Got: '${RELEASE_VERSION}'"
   exit 1
@@ -63,32 +63,30 @@ else
 fi
 echo "Release Version: ${RELEASE_VERSION}"
 
-echo -n "Determining next version: "
+echo "::group::Determine next version"
+echo -n "Next version: "
 export NEXT_VERSION=`/increment_version.sh -p ${RELEASE_VERSION}`
 echo "${NEXT_VERSION}"
 echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+echo "::endgroup::"
 
-echo "Configuring git"
+echo "::group::Configure Git"
 git config --global --add safe.directory "${GIT_SAFE_DIR}"
 git config --global user.email "${GIT_USER_NAME}@users.noreply.github.com"
 git config --global user.name "${GIT_USER_NAME}"
 git fetch
+echo "::endgroup::"
 
-echo -n "Determining target branch: "
-set_value_or_error "${TARGET_BRANCH}" `cat $GITHUB_EVENT_PATH | jq '.release.target_commitish' | sed -e 's/^"\(.*\)"$/\1/g'` "TARGET_BRANCH"
+echo "::group::Determine target merge branch"
+echo -n "Target branch: "
+set_value_or_error "${TARGET_BRANCH}" "$(jq -r 'if has("release") and .release.target_commitish != null then .release.target_commitish else "" end' "$GITHUB_EVENT_PATH")" "TARGET_BRANCH"
 echo "${TARGET_BRANCH}"
 git checkout "${TARGET_BRANCH}"
+echo "::endgroup::"
 
-echo "Merging Tag v${RELEASE_VERSION} into ${TARGET_BRANCH}"
-git merge --no-ff --no-edit "${TAG_NAME}"
-
-set +e
-echo -n "Retrieving current milestone number: "
-milestone_number=`curl -s https://api.github.com/repos/${GITHUB_REPOSITORY}/milestones | jq -c ".[] | select (.title == \"${RELEASE_VERSION}\") | .number" | sed -e 's/"//g'`
-echo $milestone_number
-echo "Closing current milestone"
-curl -s --request PATCH -H "Authorization: Bearer $1" -H "Content-Type: application/json" https://api.github.com/repos/${GITHUB_REPOSITORY}/milestones/$milestone_number --data '{"state":"closed"}'
-set -e
+echo "::group::Update to next version"
+MERGE_BRANCH_NAME="merge-back-${RELEASE_VERSION}"
+git checkout -b "${MERGE_BRANCH_NAME}" "${GITHUB_REF}"
 
 echo "Setting new snapshot version"
 sed -i "s/^projectVersion.*$/projectVersion\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
@@ -109,12 +107,42 @@ fi
 echo "Committing next version ${NEXT_VERSION}-SNAPSHOT"
 git commit -m "[skip ci] Bump version to ${NEXT_VERSION}-SNAPSHOT"
 
-echo "Pushing changes to ${TARGET_BRANCH}"
-git push origin "${TARGET_BRANCH}"
+echo "Pushing changes to side branch: ${MERGE_BRANCH_NAME}"
+git push origin "${MERGE_BRANCH_NAME}"
+echo "::endgroup::"
 
+echo "::group::Open/Reuse pull request"
+PR_TITLE="chore: merge ${RELEASE_VERSION}->${TARGET_BRANCH}; bump to ${NEXT_VERSION}"
+PR_BODY="Automated snapshot bump after completing release ${RELEASE_VERSION}"
+if ! gh pr create \
+        --title "${PR_TITLE}" \
+        --body  "${PR_BODY}" \
+        --base  "${TARGET_BRANCH}" \
+        --head  "${MERGE_BRANCH_NAME}" \
+        --label "automation,releases" \
+        --fill  >/tmp/pr-url 2>/tmp/pr-err; then
+    echo "PR likely exists – existing PR:" >&2
+    gh pr view "${MERGE_BRANCH_NAME}" --web || true
+else
+    cat /tmp/pr-url
+fi
+echo "::endgroup::"
+
+echo "::group::Close Milestone (if it exists)"
+set +e
+echo -n "Retrieving current milestone number: "
+milestone_number=`curl -s https://api.github.com/repos/${GITHUB_REPOSITORY}/milestones | jq -c ".[] | select (.title == \"${RELEASE_VERSION}\") | .number" | sed -e 's/"//g'`
+echo $milestone_number
+echo "Closing current milestone"
+curl -s --request PATCH -H "Authorization: Bearer $1" -H "Content-Type: application/json" https://api.github.com/repos/${GITHUB_REPOSITORY}/milestones/$milestone_number --data '{"state":"closed"}'
+set -e
+echo "::endgroup::"
+
+echo "::group::Side Branch Cleanup"
 # Clean up .git artifacts we've created as root (so non-docker actions that follow can use git without re-cloning)
 echo "Cleaning up artifacts with excessive permissions"
 rm -f .git/COMMIT_EDITMSG
 
 echo "Reverting repo changes so further actions will use the original versions, etc"
 git reset --hard HEAD~1
+echo "::endgroup::"
