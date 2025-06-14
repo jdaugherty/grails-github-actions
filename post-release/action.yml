@@ -8,7 +8,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: 'Post Release - Revert Snapshot Version'
+    - name: 'Revert back to Snapshot Version'
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
@@ -115,7 +115,7 @@ runs:
 
         echo "Setting new snapshot version"
         sed -i "s/^projectVersion\=.*$/projectVersion\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
-        sed -i "s/^version\=.*$/projectVersion\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
+        sed -i "s/^version\=.*$/version\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
         cat gradle.properties
         echo "\n"
         git add gradle.properties

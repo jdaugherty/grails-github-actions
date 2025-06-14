@@ -238,7 +238,7 @@ else
 
   # Publish to the generic version folder
   genericVersionFolder="${VERSION%.*}"
-  genericVersionFolder="${versionFolder}.x"
+  genericVersionFolder="${genericVersionFolder}.x"
   echo "::group::Publishing Generic Version: ${genericVersionFolder}"
   BASE_PUBLISH_PATH="./${genericVersionFolder}"
   if [ -n "${TARGET_SUBFOLDER}" ]; then
