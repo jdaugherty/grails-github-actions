@@ -114,7 +114,8 @@ runs:
         git checkout -b "${MERGE_BRANCH_NAME}" "${GITHUB_REF}"
 
         echo "Setting new snapshot version"
-        sed -i "s/^projectVersion.*$/projectVersion\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
+        sed -i "s/^projectVersion\=.*$/projectVersion\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
+        sed -i "s/^version\=.*$/projectVersion\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
         cat gradle.properties
         echo "\n"
         git add gradle.properties
