@@ -72,7 +72,8 @@ git fetch
 git checkout "v${RELEASE_VERSION}"
 
 echo "Setting release version in gradle.properties"
-sed -i "s/^projectVersion.*$/projectVersion\=${RELEASE_VERSION}/" gradle.properties
+sed -i "s/^projectVersion\=.*$/projectVersion\=${RELEASE_VERSION}/" gradle.properties
+sed -i "s/^version\=.*$/version\=${RELEASE_VERSION}/" gradle.properties
 cat gradle.properties
 echo "\n"
 git add gradle.properties

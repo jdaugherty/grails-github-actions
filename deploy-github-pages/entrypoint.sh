@@ -224,23 +224,36 @@ if [[ "$GRADLE_PUBLISH_RELEASE" == "false" ]]; then
 else
   echo "Release detected"
 
-  versionFolder="${VERSION%.*}"
-  versionFolder="${versionFolder}.x"
-  echo "Version folder will be ${versionFolder}"
-
-  # Publish to the version folder first
-  BASE_PUBLISH_PATH="./${versionFolder}"
+  # Publish to the specific version folder
+  echo "::group::Publishing Specific Version: ${VERSION}"
+  BASE_PUBLISH_PATH="./${VERSION}"
   if [ -n "${TARGET_SUBFOLDER}" ]; then
-    PUBLISH_PATH="./${versionFolder}/${TARGET_SUBFOLDER}"
+    PUBLISH_PATH="./${VERSION}/${TARGET_SUBFOLDER}"
   else    
-    PUBLISH_PATH="./${versionFolder}"
+    PUBLISH_PATH="./${VERSION}"
   fi
   publish_artifacts
   echo "Published documentation to ${PUBLISH_PATH}"
+  echo "::endgroup::"
+
+  # Publish to the generic version folder
+  genericVersionFolder="${VERSION%.*}"
+  genericVersionFolder="${genericVersionFolder}.x"
+  echo "::group::Publishing Generic Version: ${genericVersionFolder}"
+  BASE_PUBLISH_PATH="./${genericVersionFolder}"
+  if [ -n "${TARGET_SUBFOLDER}" ]; then
+    PUBLISH_PATH="./${genericVersionFolder}/${TARGET_SUBFOLDER}"
+  else
+    PUBLISH_PATH="./${genericVersionFolder}"
+  fi
+  publish_artifacts
+  echo "Published documentation to ${genericVersionFolder}"
+  echo "::endgroup::"
 
   # Publish to the latest release folder if needed 
   if [[ "$SKIP_RELEASE_FOLDER" == "false" ]]; then
-    if is_highest_version "${versionFolder}"; then
+    if is_highest_version "${genericVersionFolder}"; then
+      echo "::group::Overwriting ${LAST_RELEASE_FOLDER} with the latest release documentation"
       BASE_PUBLISH_PATH="./${LAST_RELEASE_FOLDER}"
       if [ -n "${TARGET_SUBFOLDER}" ]; then
         PUBLISH_PATH="./${LAST_RELEASE_FOLDER}/${TARGET_SUBFOLDER}"
@@ -249,8 +262,9 @@ else
       fi
       publish_artifacts
       echo "Published a copy of documentation to ${PUBLISH_PATH}"
+      echo "::endgroup::"
     else
-      echo "Skipping documentation copy to '${LAST_RELEASE_FOLDER}' because ${versionFolder} is NOT the highest."
+      echo "Skipping documentation copy to '${LAST_RELEASE_FOLDER}' because ${genericVersionFolder} is NOT the highest."
     fi
   else 
     echo "Skipping documentation copy to ${LAST_RELEASE_FOLDER}"
