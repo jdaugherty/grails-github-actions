@@ -45,7 +45,7 @@ set_value_or_error() {
 
 set -e
 
-set_value_or_error "${RELEASE_VERSION}" "${GITHUB_REF:11}" "RELEASE_VERSION"
+set_value_or_error "${RELEASE_VERSION}" "${GITHUB_REF:10}" "RELEASE_VERSION"
 set_value_or_error "${RELEASE_TAG_PREFIX}" "v" "RELEASE_TAG_PREFIX"
 
 if [[ ! "${RELEASE_VERSION}" =~ ^(${RELEASE_TAG_PREFIX})?[^.]+\.[^.]+\.[^.]+$ ]]; then
