@@ -46,21 +46,21 @@ set_value_or_error() {
 set -e
 
 set_value_or_error "${RELEASE_VERSION}" "${GITHUB_REF:11}" "RELEASE_VERSION"
-if [[ ! "${RELEASE_VERSION}" =~ ^v?[^.]+\.[^.]+\.[^.]+$ ]]; then
-  echo "ERROR: RELEASE_VERSION must be in the format 'X.X.X' or 'vX.X.X'. Got: '${RELEASE_VERSION}'"
+set_value_or_error "${RELEASE_TAG_PREFIX}" "v" "RELEASE_TAG_PREFIX"
+
+if [[ ! "${RELEASE_VERSION}" =~ ^(${RELEASE_TAG_PREFIX})?[^.]+\.[^.]+\.[^.]+$ ]]; then
+  echo "ERROR: RELEASE_VERSION must be in the format 'X.X.X' or '${RELEASE_TAG_PREFIX}X.X.X'. Got: '${RELEASE_VERSION}'"
   exit 1
 fi
-if [[ "${RELEASE_VERSION}" == v* ]]; then
-  RELEASE_VERSION="${RELEASE_VERSION#v}"
+if [[ $RELEASE_VERSION == "${RELEASE_TAG_PREFIX}"* ]]; then
+  RELEASE_VERSION=${RELEASE_VERSION:${#RELEASE_TAG_PREFIX}}
 else
   RELEASE_VERSION="${RELEASE_VERSION}"
 fi
 echo "Release Version: ${RELEASE_VERSION}"
 
 set_value_or_error "${RELEASE_URL}" `cat $GITHUB_EVENT_PATH | jq '.release.url' | sed -e 's/^"\(.*\)"$/\1/g'` "RELEASE_URL"
-
 set_value_or_error "${GIT_USER_NAME}" "${GITHUB_ACTOR}" "GIT_USER_NAME"
-
 set_value_or_error "${GITHUB_WORKSPACE}" "." "GIT_SAFE_DIR"
 
 echo "Configuring git"
@@ -69,7 +69,7 @@ git config --global user.email "${GIT_USER_NAME}@users.noreply.github.com"
 git config --global user.name "${GIT_USER_NAME}"
 git fetch
 
-git checkout "v${RELEASE_VERSION}"
+git checkout "${RELEASE_TAG_PREFIX}${RELEASE_VERSION}"
 
 echo "Setting release version in gradle.properties"
 sed -i "s/^projectVersion\=.*$/projectVersion\=${RELEASE_VERSION}/" gradle.properties
@@ -88,16 +88,16 @@ else
   fi
 fi
 
-echo "Pushing release version and recreating v${RELEASE_VERSION} tag"
+echo "Pushing release version and recreating ${RELEASE_TAG_PREFIX}${RELEASE_VERSION} tag"
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  git commit -m "[skip ci] Release v${RELEASE_VERSION}"
+  git commit -m "[skip ci] Release ${RELEASE_TAG_PREFIX}${RELEASE_VERSION}"
 else
   echo "No changes to commit - was the release version already set?"
 fi
 
-git tag -fa v${RELEASE_VERSION} -m "Release v${RELEASE_VERSION}"
+git tag -fa ${RELEASE_TAG_PREFIX}${RELEASE_VERSION} -m "Release ${RELEASE_TAG_PREFIX}${RELEASE_VERSION}"
 # force push the updated tag
-git push origin "v${RELEASE_VERSION}" --force
+git push origin "${RELEASE_TAG_PREFIX}${RELEASE_VERSION}" --force
 
 echo "Closing the release after updating the tag: ${RELEASE_URL}"
 curl -s --request PATCH -H "Authorization: Bearer $1" -H "Content-Type: application/json" "${RELEASE_URL}" --data "{\"draft\": false}"

@@ -19,6 +19,7 @@ runs:
         # permissions:
         #    issues: write # to close milestone (script will silently fail if not set)
         #    contents: write # to commit
+        #    pull-requests: write # to create merge PR
         #
         # This script expects the github action to have checked out the repository with fetch-depth: 0
 
@@ -66,13 +67,14 @@ runs:
         set_value_or_error "${GITHUB_WORKSPACE}" "." "GIT_SAFE_DIR"
         set_value_or_error "${GITHUB_REPOSITORY}" "" "GITHUB_REPOSITORY"
         set_value_or_error "${RELEASE_VERSION}" "${GITHUB_REF:11}" "RELEASE_VERSION"
+        set_value_or_error "${RELEASE_TAG_PREFIX}" "v" "RELEASE_TAG_PREFIX"        
 
-        if [[ ! "${RELEASE_VERSION}" =~ ^v?[^.]+\.[^.]+\.[^.]+$ ]]; then
-          echo "ERROR: RELEASE_VERSION must be in the format 'X.X.X' or 'vX.X.X'. Got: '${RELEASE_VERSION}'"
+        if [[ ! "${RELEASE_VERSION}" =~ ^(${RELEASE_TAG_PREFIX})?[^.]+\.[^.]+\.[^.]+$ ]]; then
+          echo "ERROR: RELEASE_VERSION must be in the format 'X.X.X' or '${RELEASE_TAG_PREFIX}X.X.X'. Got: '${RELEASE_VERSION}'"
           exit 1
         fi
-        if [[ "${RELEASE_VERSION}" == v* ]]; then
-          RELEASE_VERSION="${RELEASE_VERSION#v}"
+        if [[ $RELEASE_VERSION == "${RELEASE_TAG_PREFIX}"* ]]; then
+          RELEASE_VERSION=${RELEASE_VERSION:${#RELEASE_TAG_PREFIX}}
         else
           RELEASE_VERSION="${RELEASE_VERSION}"
         fi

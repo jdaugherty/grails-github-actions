@@ -145,14 +145,17 @@ fi
 # SOURCE_FOLDER - the relative path of the source documentation folder from the root of the repo
 set_path_value_or_error "${SOURCE_FOLDER}" "" "SOURCE_FOLDER"
 
+# RELEASE_TAG_PREFIX - the tag prefix to use for a release version, defaults to 'v'
+set_value_or_error "${RELEASE_TAG_PREFIX}" "v" "RELEASE_TAG_PREFIX"
+
 # VERSION - the version number of this snapshot or release, v7.0.2 will be `7.0.2`, 7.0.x will be 7.0.x
 set_value_or_error "${VERSION}" "${GITHUB_REF_NAME}" "VERSION"
-if [[ ! "$VERSION" =~ ^v?[^.]+\.[^.]+\.[^.]+$ ]]; then
-  echo "ERROR: VERSION must be in the format 'X.X.X' or 'vX.X.X'. Got: '$VERSION'"
+if [[ ! "${VERSION}" =~ ^(${RELEASE_TAG_PREFIX})?[^.]+\.[^.]+\.[^.]+$ ]]; then
+  echo "ERROR: VERSION must be in the format 'X.X.X' or '${RELEASE_TAG_PREFIX}X.X.X'. Got: '${VERSION}'"
   exit 1
 fi
-if [[ "$VERSION" == v* ]]; then
-  VERSION="${VERSION#v}"
+if [[ $VERSION == "${RELEASE_TAG_PREFIX}"* ]]; then
+  VERSION=${VERSION:${#RELEASE_TAG_PREFIX}}
 else
   VERSION="$VERSION"
 fi
