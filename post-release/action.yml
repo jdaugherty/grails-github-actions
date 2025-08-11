@@ -116,14 +116,19 @@ runs:
         git config --global --add safe.directory "${GIT_SAFE_DIR}"
         git config --global user.email "${GIT_USER_NAME}@users.noreply.github.com"
         git config --global user.name "${GIT_USER_NAME}"
+        git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
         git fetch
         echo "::endgroup::"
 
         echo "::group::Determine target merge branch"
         echo -n "Target branch: "
         set_value_or_error "${TARGET_BRANCH}" "$(jq -r 'if has("release") and .release.target_commitish != null then .release.target_commitish else "" end' "$GITHUB_EVENT_PATH")" "TARGET_BRANCH"
-        echo "${TARGET_BRANCH}"
-        git checkout "${TARGET_BRANCH}"
+        TARGET_BRANCH="${TARGET_BRANCH#refs/heads/}"
+        echo "Target Branch is ${TARGET_BRANCH}"
+        echo "Fetching Target Branch"
+        git fetch --prune origin "${TARGET_BRANCH}"
+        echo "Switching to local ${TARGET_BRANCH}"
+        git switch -c "${TARGET_BRANCH}" --track "origin/${TARGET_BRANCH}" 2>/dev/null || git switch "${TARGET_BRANCH}"
         echo "::endgroup::"
 
         echo "::group::Update to next version"
