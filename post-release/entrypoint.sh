@@ -1,5 +1,24 @@
 #!/bin/bash
 
+#
+#  Licensed to the Apache Software Foundation (ASF) under one
+#  or more contributor license agreements.  See the NOTICE file
+#  distributed with this work for additional information
+#  regarding copyright ownership.  The ASF licenses this file
+#  to you under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance
+#  with the License.  You may obtain a copy of the License at
+#
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing,
+#  software distributed under the License is distributed on an
+#  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+#  KIND, either express or implied.  See the License for the
+#  specific language governing permissions and limitations
+#  under the License.
+#
+
 # The following permissions are required to successfully execute this script:
 # permissions:
 #    issues: write # to close milestone (script will silently fail if not set)
@@ -54,10 +73,11 @@ set_value_or_error "${GITHUB_WORKSPACE}" "." "GIT_SAFE_DIR"
 set_value_or_error "${GITHUB_REPOSITORY}" "" "GITHUB_REPOSITORY"
 set_value_or_error "${GITHUB_TOKEN}" "" "GITHUB_TOKEN"
 set_value_or_error "${GITHUB_EVENT_PATH}" "" "GITHUB_EVENT_PATH"
-set_value_or_error "${GITHUB_ACTION_PATH}" "" "GITHUB_ACTION_PATH"
-set_value_or_error "${RELEASE_VERSION}" "${GITHUB_REF:10}" "RELEASE_VERSION"
+set_value_or_error "${GITHUB_API_URL}" "" "GITHUB_API_URL"
+set_value_or_error "${RELEASE_VERSION}" "${GITHUB_REF#refs/*/}" "RELEASE_VERSION"
 set_value_or_error "${RELEASE_TAG_PREFIX}" "v" "RELEASE_TAG_PREFIX"
 
+echo "::group::Determine release version"
 if [[ ! "${RELEASE_VERSION}" =~ ^(${RELEASE_TAG_PREFIX})?[^.]+\.[^.]+\.[^.]+$ ]]; then
   echo "ERROR: RELEASE_VERSION must be in the format 'X.X.X' or '${RELEASE_TAG_PREFIX}X.X.X'. Got: '${RELEASE_VERSION}'"
   exit 1
@@ -68,20 +88,21 @@ else
   RELEASE_VERSION="${RELEASE_VERSION}"
 fi
 echo "Release Version: ${RELEASE_VERSION}"
+echo "::endgroup::"
 
 echo "::group::Close Milestone (if it exists)"
 set +e
 echo -n "Retrieving current milestone number: "
-milestone_number=`curl -s https://api.github.com/repos/${GITHUB_REPOSITORY}/milestones | jq -c ".[] | select (.title == \"${RELEASE_VERSION}\") | .number" | sed -e 's/"//g'`
+milestone_number=`curl -s ${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/milestones | jq -c ".[] | select (.title == \"${RELEASE_VERSION}\") | .number" | sed -e 's/"//g'`
 echo $milestone_number
 echo "Closing current milestone"
-curl -s --request PATCH -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Content-Type: application/json" https://api.github.com/repos/${GITHUB_REPOSITORY}/milestones/$milestone_number --data '{"state":"closed"}'
+curl -s --request PATCH -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Content-Type: application/json" ${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/milestones/$milestone_number --data '{"state":"closed"}'
 set -e
 echo "::endgroup::"
 
 echo "::group::Determine next version"
-echo -n "Next version: "
-export NEXT_VERSION=`${GITHUB_ACTION_PATH}/increment_version.sh -p ${RELEASE_VERSION}`
+echo -n "Next Version: "
+export NEXT_VERSION=`/increment_version.sh -p ${RELEASE_VERSION}`
 echo "${NEXT_VERSION}"
 echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
 echo "::endgroup::"
@@ -95,19 +116,16 @@ git fetch
 echo "::endgroup::"
 
 echo "::group::Determine target merge branch"
-echo -n "Target branch: "
 set_value_or_error "${TARGET_BRANCH}" "$(jq -r 'if has("release") and .release.target_commitish != null then .release.target_commitish else "" end' "$GITHUB_EVENT_PATH")" "TARGET_BRANCH"
-TARGET_BRANCH="${TARGET_BRANCH#refs/heads/}"
 echo "Target Branch is ${TARGET_BRANCH}"
-echo "Fetching Target Branch"
-git fetch --prune origin "${TARGET_BRANCH}"
-echo "Switching to local ${TARGET_BRANCH}"
-git switch -c "${TARGET_BRANCH}" --track "origin/${TARGET_BRANCH}" 2>/dev/null || git switch "${TARGET_BRANCH}"
+TARGET_BRANCH="${TARGET_BRANCH#refs/*/}"
+echo "Pruned Target Branch is ${TARGET_BRANCH}"
+git checkout "${TARGET_BRANCH}"
 echo "::endgroup::"
 
 echo "::group::Update to next version"
 MERGE_BRANCH_NAME="merge-back-${RELEASE_VERSION}"
-git checkout -b "${MERGE_BRANCH_NAME}" "${GITHUB_REF}"
+git checkout -b "${MERGE_BRANCH_NAME}" "${TARGET_BRANCH}"
 
 echo "Setting new snapshot version"
 sed -i "s/^projectVersion\=.*$/projectVersion\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
