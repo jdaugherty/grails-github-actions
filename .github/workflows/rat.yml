@@ -48,6 +48,7 @@ jobs:
           path: build/reports/rat/index.html
       - name: Publish RAT report in Job Summary
         if: always()
+        working-directory: 'tests'
         run: |
           echo "## 📋 Apache RAT Report" >> $GITHUB_STEP_SUMMARY
           # inject raw HTML (it will render as HTML in the summary)
