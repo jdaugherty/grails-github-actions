@@ -14,16 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Grails export-gradle-properties action
+# `export-gradle-properties` Action
 
-Exports `gradle.properties` as environment variables.
+## Purpose: Export Gradle Properties as Environment Variables
+
+A GitHub Action that takes a Java properties file (typically `gradle.properties`) and exports each property as an environment variable for use in subsequent steps of your workflow.
 
 ## Example usage
 
 ```yaml
-- name: Export Gradle Properties
+- name: "Export Gradle Properties"
   uses: apache/grails-github-actions/export-gradle-properties@asf
-- name: Use the property
+- name: "Use the property"
   run:
     echo "${PROJECT_VERSION}"
   env:
