@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Handles Repository Setup for the next Release Version
+# `post-release` Action
+
+## Purpose: Handles Repository Setup for the next Release Version
 
 A GitHub Action that handles steps necessary to close out a GitHub Release process.  This includes: 
 

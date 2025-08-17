@@ -19,7 +19,7 @@
 package org.apache.grails.github
 
 import org.apache.grails.github.mocks.GitHubDockerAction
-import org.apache.grails.github.mocks.GitHubRelease
+import org.apache.grails.github.mocks.GitHubVersion
 import org.apache.grails.github.mocks.GitHubRepoMock
 import org.apache.grails.github.mocks.cli.GitHubCliMock
 import org.testcontainers.containers.Network
@@ -50,7 +50,7 @@ class DeployGithubPagesSpec extends Specification {
         Network net = Network.newNetwork()
 
         and:
-        GitHubRelease release = new GitHubRelease(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
+        GitHubVersion release = new GitHubVersion(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
         GitHubDockerAction action = new GitHubDockerAction('deploy-github-pages', release, new GitHubCliMock())
 
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
@@ -102,7 +102,7 @@ class DeployGithubPagesSpec extends Specification {
         Network net = Network.newNetwork()
 
         and:
-        GitHubRelease release = new GitHubRelease(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
+        GitHubVersion release = new GitHubVersion(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
         GitHubDockerAction action = new GitHubDockerAction('deploy-github-pages', release, new GitHubCliMock())
 
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
@@ -161,7 +161,7 @@ class DeployGithubPagesSpec extends Specification {
         Network net = Network.newNetwork()
 
         and:
-        GitHubRelease release = new GitHubRelease(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
+        GitHubVersion release = new GitHubVersion(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
         GitHubDockerAction action = new GitHubDockerAction('deploy-github-pages', release, new GitHubCliMock())
 
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
@@ -209,7 +209,7 @@ class DeployGithubPagesSpec extends Specification {
         Network net = Network.newNetwork()
 
         and:
-        GitHubRelease release = new GitHubRelease(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
+        GitHubVersion release = new GitHubVersion(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
         GitHubDockerAction action = new GitHubDockerAction('deploy-github-pages', release, new GitHubCliMock())
 
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
@@ -263,7 +263,7 @@ class DeployGithubPagesSpec extends Specification {
         Network net = Network.newNetwork()
 
         and:
-        GitHubRelease release = new GitHubRelease(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
+        GitHubVersion release = new GitHubVersion(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
         GitHubDockerAction action = new GitHubDockerAction('deploy-github-pages', release, new GitHubCliMock())
 
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
@@ -325,7 +325,7 @@ class DeployGithubPagesSpec extends Specification {
         Network net = Network.newNetwork()
 
         and:
-        GitHubRelease release = new GitHubRelease(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
+        GitHubVersion release = new GitHubVersion(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
         GitHubDockerAction action = new GitHubDockerAction('deploy-github-pages', release, new GitHubCliMock())
 
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
@@ -388,7 +388,7 @@ class DeployGithubPagesSpec extends Specification {
         Network net = Network.newNetwork()
 
         and:
-        GitHubRelease release = new GitHubRelease(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
+        GitHubVersion release = new GitHubVersion(version: '7.0.0-RC1', tagName: 'rel-7.0.0-RC1', targetBranch: '7.0.x', targetVersion: '7.0.0-SNAPSHOT')
         GitHubDockerAction action = new GitHubDockerAction('deploy-github-pages', release, new GitHubCliMock())
 
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)

@@ -25,6 +25,12 @@ set -e
 
 while read -r line
 do
+	# Skip empty lines and lines starting with #
+	trimmed="$(echo "$line" | sed 's/^[[:space:]]*//')"
+	if [[ -z "$trimmed" || "$trimmed" == \#* ]]; then
+		continue
+	fi
+
 	if [[ "$line" == *"="* ]];
 	then
 		key=`echo $line | cut -d \= -f 1`
@@ -35,7 +41,7 @@ do
 		echo "$key=$value" >> $GITHUB_ENV
 	fi
 
-done < $1
+done < "$1"
 
 
 exit $?

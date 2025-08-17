@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Deploy Documentation to Github Pages
+# `deploy-github-pages` Action
+
+## Purpose: Deploy Documentation to Github Pages
 
 A GitHub Action to copy documentation files to a specified documentation branch. Works by creating a subfolder named the same as the documentation branch, checking out the documentation branch to that folder, staging files, and then pushing them. Action is configured via environment variables.
 

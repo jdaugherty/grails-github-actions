@@ -38,24 +38,24 @@ class GitHubDockerAction implements Closeable {
     File baseDir
     String actionName
 
-    private GitHubRelease release
+    private GitHubVersion version
     GitHubApiMock apiMock
 
     GenericContainer container
     private ToStringConsumer containerLogBuffer = new ToStringConsumer()
 
-    GitHubDockerAction(String actionName, GitHubRelease release, CliMock ... cliMocks) {
+    GitHubDockerAction(String actionName, GitHubVersion version, CliMock ... cliMocks) {
         baseDir = Files.createTempDirectory('github-action-workspace').toFile()
 
         // jgit will attempt to use the user.home for git configuration, use the test baseDir to ensure isolation
         System.setProperty('user.home', baseDir.absolutePath)
         this.actionName = actionName
-        this.release = release
+        this.version = version
         getWorkspacePath().toFile().mkdirs()
         getWorkflowPath().toFile().mkdirs()
 
         // api mock must be started to know the url to include in the event json
-        apiMock = new GitHubApiMock(release)
+        apiMock = new GitHubApiMock(version)
         apiMock.start()
         getWorkflowPath().resolve('event.json').toFile().text = getEventJson()
 
@@ -86,11 +86,12 @@ class GitHubDockerAction implements Closeable {
         env['GITHUB_ACTOR'] = 'octocat_actor'
         env['GITHUB_WORKSPACE'] = '/github/workspace' // always the working directory
         env['GITHUB_ACTION_PATH'] = '/'
-        env['GITHUB_REPOSITORY'] = release.repository
+        env['GITHUB_REPOSITORY'] = version.repository
         env['GITHUB_TOKEN'] = 'ghp_randomtokenhere1234567890'
         env['GITHUB_EVENT_PATH'] = '/github/workflow/event.json'
-        env['GITHUB_REF'] = "refs/tags/${release.tagName}" as String
+        env['GITHUB_REF'] = "refs/tags/${version.tagName}" as String
         env['GITHUB_OUTPUT'] = '/github/github-output.txt'
+        env['GITHUB_ENV'] = '/github/github-env'
         env['PATH'] = '/github/path:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
         env['GITHUB_API_URL'] = apiMock.urlForContainer
         env['GITHUB_URL_BASE'] = 'github.com'
@@ -162,6 +163,14 @@ class GitHubDockerAction implements Closeable {
         container.start()
     }
 
+    void addCommandArgs(String ... args) {
+        if(container == null) {
+            throw new IllegalStateException('Container has not been created.')
+        }
+
+        container.withCommand(args)
+    }
+
     Long getActionExitCode() {
         if (container == null) {
             throw new IllegalStateException('Container has not been created.')
@@ -201,15 +210,15 @@ class GitHubDockerAction implements Closeable {
 {
   "action": "published",
   "release": {
-    "url": "${apiMock.getUrlForContainer()}/repos/${release.repository}/releases/42",
-    "assets_url": "${apiMock.getUrlForContainer()}/repos/${release.repository}/releases/42/assets",
-    "upload_url": "https://uploads.github.com/repos/${release.repository}/releases/42/assets{?name,label}",
-    "html_url": "https://github.com/${release.repository}/releases/tag/${release.tagName}",
+    "url": "${apiMock.getUrlForContainer()}/repos/${version.repository}/releases/42",
+    "assets_url": "${apiMock.getUrlForContainer()}/repos/${version.repository}/releases/42/assets",
+    "upload_url": "https://uploads.github.com/repos/${version.repository}/releases/42/assets{?name,label}",
+    "html_url": "https://github.com/${version.repository}/releases/tag/${version.tagName}",
     "id": 42,
     "node_id": "MDc6UmVsZWFzZTQy",
-    "tag_name": "${release.tagName}",
-    "target_commitish": "refs/heads/${release.tagName}",
-    "name": "${release.version}",
+    "tag_name": "${version.tagName}",
+    "target_commitish": "refs/heads/${version.tagName}",
+    "name": "${version.version}",
     "draft": false,
     "prerelease": false,
     "created_at": "2025-08-14T12:00:00Z",
@@ -222,16 +231,16 @@ class GitHubDockerAction implements Closeable {
       "type": "User",
       "site_admin": false
     },
-    "tarball_url": "${apiMock.getUrlForContainer()}/repos/${release.repository}/tarball/${release.tagName}",
-    "zipball_url": "${apiMock.getUrlForContainer()}/repos/${release.repository}/zipball/${release.tagName}",
+    "tarball_url": "${apiMock.getUrlForContainer()}/repos/${version.repository}/tarball/${version.tagName}",
+    "zipball_url": "${apiMock.getUrlForContainer()}/repos/${version.repository}/zipball/${version.tagName}",
     "body": "Changelog goes here",
     "assets": [
       {
-        "url": "${apiMock.getUrlForContainer()}/repos/${release.repository}/releases/assets/1",
-        "browser_download_url": "https://github.com/${release.repository}/releases/download/${release.tagName}/widgets-${release.version}-linux-amd64.zip",
+        "url": "${apiMock.getUrlForContainer()}/repos/${version.repository}/releases/assets/1",
+        "browser_download_url": "https://github.com/${version.repository}/releases/download/${version.tagName}/widgets-${version.version}-linux-amd64.zip",
         "id": 1,
         "node_id": "MDEyOlJlbGVhc2VBc3NldDE=",
-        "name": "widgets-${release.version}-linux-amd64.zip",
+        "name": "widgets-${version.version}-linux-amd64.zip",
         "label": "Linux build",
         "state": "uploaded",
         "content_type": "application/zip",
@@ -253,14 +262,14 @@ class GitHubDockerAction implements Closeable {
     "id": 123456789,
     "node_id": "MDEwOlJlcG9zaXRvcnkxMjM0NTY3ODk=",
     "name": "widgets",
-    "full_name": "${release.repository}",
+    "full_name": "${version.repository}",
     "private": false,
-    "html_url": "https://github.com/${release.repository}",
-    "url": "${apiMock.getUrlForContainer()}/repos/${release.repository}",
+    "html_url": "https://github.com/${version.repository}",
+    "url": "${apiMock.getUrlForContainer()}/repos/${version.repository}",
     "default_branch": "main",
     "visibility": "public",
     "owner": {
-      "login": "${release.organization}",
+      "login": "${version.organization}",
       "id": 42,
       "node_id": "MDEyOk9yZ2FuaXphdGlvbjQy",
       "type": "Organization",
@@ -268,10 +277,10 @@ class GitHubDockerAction implements Closeable {
     }
   },
   "organization": {
-    "login": "${release.organization}",
+    "login": "${version.organization}",
     "id": 42,
     "node_id": "MDEyOk9yZ2FuaXphdGlvbjQy",
-    "url": "${apiMock.getUrlForContainer()}/orgs/${release.organization}"
+    "url": "${apiMock.getUrlForContainer()}/orgs/${version.organization}"
   },
   "sender": {
     "login": "jdoe",

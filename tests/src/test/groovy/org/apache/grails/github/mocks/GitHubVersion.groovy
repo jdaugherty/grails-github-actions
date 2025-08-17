@@ -18,7 +18,7 @@
  */
 package org.apache.grails.github.mocks
 
-class GitHubRelease {
+class GitHubVersion {
     String repository = 'acme/widgets'
     String version
     String tagName

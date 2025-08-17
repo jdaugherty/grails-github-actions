@@ -25,9 +25,9 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 class GitHubApiMock implements Closeable {
 
     WireMockServer githubApi
-    GitHubRelease release
+    GitHubVersion release
 
-    GitHubApiMock(GitHubRelease release) {
+    GitHubApiMock(GitHubVersion release) {
         githubApi = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort())
         this.release = release
     }
