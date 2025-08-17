@@ -93,6 +93,7 @@ class GitHubDockerAction implements Closeable {
         env['GITHUB_OUTPUT'] = '/github/github-output.txt'
         env['PATH'] = '/github/path:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
         env['GITHUB_API_URL'] = apiMock.urlForContainer
+        env['GITHUB_URL_BASE'] = 'github.com'
 
         env
     }
@@ -129,6 +130,14 @@ class GitHubDockerAction implements Closeable {
         }
 
         containerLogBuffer.toUtf8String()
+    }
+
+    boolean isLogGroupPresent(String groupName) {
+        String allLogs = actionLogs
+
+        def markingString = "::group::$groupName" as String
+        int idx = allLogs.indexOf(markingString)
+        return idx >= 0
     }
 
     @Memoized

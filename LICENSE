@@ -200,3 +200,12 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+--------------------------------------------------------------------------
+
+The following files are licensed under the MIT License from https://github.com/fmahnke/shell-semver:
+
+    post-release/increment_version.sh
+    release-notes/increment_version.sh
+
+See licenses/LICENSE-MIT.txt for the full license terms.
