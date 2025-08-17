@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Grails github-actions
+# grails-github-actions
 
-Custom GitHub actions used by the Apache Grails projects.
+Custom GitHub actions used by the Apache Grails projects. Please see the READMEs in each action for usage instructions.
 
 ## Usages
 Used by: https://github.com/search?q=org%3Aapache+%22uses%3A+apache%2Fgrails-github-actions%2F%22+language%3Ayml&type=code
