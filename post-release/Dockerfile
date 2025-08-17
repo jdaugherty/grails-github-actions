@@ -16,7 +16,7 @@
 #  specific language governing permissions and limitations
 #  under the License.
 #
-FROM ferrarimarco/github-changelog-generator
+FROM alpine:3
 
 RUN apk add --no-cache curl jq git bash
 

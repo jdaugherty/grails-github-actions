@@ -64,6 +64,8 @@ set_value_or_error() {
 
 set -e
 
+echo "::group::Setup"
+set_value_or_error "${GITHUB_TOKEN}" "" "GITHUB_TOKEN"
 set_value_or_error "${RELEASE_VERSION}" "${GITHUB_REF:10}" "RELEASE_VERSION"
 set_value_or_error "${RELEASE_TAG_PREFIX}" "v" "RELEASE_TAG_PREFIX"
 
@@ -87,19 +89,23 @@ git config --global --add safe.directory "${GIT_SAFE_DIR}"
 git config --global user.email "${GIT_USER_NAME}@users.noreply.github.com"
 git config --global user.name "${GIT_USER_NAME}"
 git fetch
+echo "::endgroup::"
 
+echo "::group::Updating Project Version"
 git checkout "${RELEASE_TAG_PREFIX}${RELEASE_VERSION}"
-
 echo "Setting release version in gradle.properties"
 sed -i "s/^projectVersion\=.*$/projectVersion\=${RELEASE_VERSION}/" gradle.properties
 sed -i "s/^version\=.*$/version\=${RELEASE_VERSION}/" gradle.properties
 cat gradle.properties
 echo "\n"
 git add gradle.properties
+echo "::endgroup::"
 
 if [[ -n "${RELEASE_SCRIPT_PATH}" && -x "${GITHUB_WORKSPACE}/${RELEASE_SCRIPT_PATH}" ]]; then
+  echo "::group::Applying Release Script"
   echo "Executing additional release script at ${GITHUB_WORKSPACE}/${RELEASE_SCRIPT_PATH}"
   "${GITHUB_WORKSPACE}/${RELEASE_SCRIPT_PATH}"
+  echo "::endgroup::"
 else
   if [[ -n "${RELEASE_SCRIPT_PATH}" ]]; then
     echo "ERROR: RELEASE_SCRIPT_PATH is set to '${RELEASE_SCRIPT_PATH}' but is not executable or does not exist." >&2
@@ -107,6 +113,7 @@ else
   fi
 fi
 
+echo "::group::Pushing Project Changes"
 echo "Pushing release version and recreating ${RELEASE_TAG_PREFIX}${RELEASE_VERSION} tag"
 if ! git diff --quiet || ! git diff --cached --quiet; then
   git commit -m "[skip ci] Release ${RELEASE_TAG_PREFIX}${RELEASE_VERSION}"
@@ -117,6 +124,11 @@ fi
 git tag -fa ${RELEASE_TAG_PREFIX}${RELEASE_VERSION} -m "Release ${RELEASE_TAG_PREFIX}${RELEASE_VERSION}"
 # force push the updated tag
 git push origin "${RELEASE_TAG_PREFIX}${RELEASE_VERSION}" --force
+echo "::endgroup::"
 
-echo "Closing the release after updating the tag: ${RELEASE_URL}"
-curl -s --request PATCH -H "Authorization: Bearer $1" -H "Content-Type: application/json" "${RELEASE_URL}" --data "{\"draft\": false}"
+echo "::group::Updating Release for Project Changes"
+echo "Closing the release using ${RELEASE_URL} after updating the tag:"
+curl --request PATCH -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Content-Type: application/json" "${RELEASE_URL}" --data "{\"draft\": false}"
+printf "\n"
+echo "Pre Release steps complete"
+echo "::endgroup::"
