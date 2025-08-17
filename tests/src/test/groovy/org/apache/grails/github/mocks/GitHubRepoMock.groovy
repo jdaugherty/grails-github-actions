@@ -20,6 +20,16 @@ package org.apache.grails.github.mocks
 
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.PushCommand
+import org.eclipse.jgit.dircache.DirCache
+import org.eclipse.jgit.dircache.DirCacheBuilder
+import org.eclipse.jgit.dircache.DirCacheEntry
+import org.eclipse.jgit.lib.CommitBuilder
+import org.eclipse.jgit.lib.Constants
+import org.eclipse.jgit.lib.FileMode
+import org.eclipse.jgit.lib.ObjectId
+import org.eclipse.jgit.lib.ObjectInserter
+import org.eclipse.jgit.lib.PersonIdent
+import org.eclipse.jgit.lib.RefUpdate
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.transport.RefSpec
@@ -65,7 +75,7 @@ class GitHubRepoMock implements Closeable {
         Container.ExecResult create = gitHost.execInContainer(
                 'su-exec', 'git',
                 'gitea', 'admin', 'user', 'create',
-                '--admin', '--username', 'ci', '--password', 'pass',
+                '--admin', '--username', username, '--password', token,
                 '--email', 'ci@example.com', '--must-change-password=false'
         )
         if (create.getExitCode() != 0) {
@@ -74,7 +84,7 @@ class GitHubRepoMock implements Closeable {
 
         String base = "http://${gitHost.getHost()}:${gitHost.getMappedPort(3000)}" as String
         HttpClient http = HttpClient.newHttpClient()
-        String basic = "Basic ${Base64.getEncoder().encodeToString('ci:pass'.getBytes(StandardCharsets.UTF_8))}" as String
+        String basic = "Basic ${Base64.getEncoder().encodeToString("$username:$token".getBytes(StandardCharsets.UTF_8))}" as String
 
         HttpRequest createRepo = HttpRequest.newBuilder(
                 URI.create("$base/api/v1/user/repos" as String))
@@ -86,20 +96,103 @@ class GitHubRepoMock implements Closeable {
         response.statusCode() == 201
     }
 
-    String getExternalGitHostUrl() {
-        "http://ci:pass@${gitHost.getHost()}:${gitHost.getMappedPort(3000)}/ci/widgets.git"
+    String getUsername() {
+        'acme'
     }
 
-    void populateRepository(String storedProjectVersion, String tag, List<String> additionalBranchNames = ['7.0.x']) {
+    String getToken() {
+        'pass'
+    }
+
+    String getInternalUrlBase() {
+        'gitea:3000'
+    }
+
+    String getExternalGitHostUrl() {
+        "http://$username:$token@${gitHost.getHost()}:${gitHost.getMappedPort(3000)}/$username/widgets.git"
+    }
+
+    Map<String, String> getProjectVersionFiles(String storedProjectVersion) {
+        [
+                'README.md'        : '# demo\n',
+                'gradle.properties': "projectVersion=$storedProjectVersion\n"
+        ]
+    }
+
+    void createDivergedBranch(Map<String, String> files, String divergedBranch, String defaultBranch = 'main') {
         Path temp = Files.createTempDirectory('ref-project-version')
+        try {
+            cloneRepo(temp, defaultBranch) { Git git ->
+                Repository repo = git.getRepository()
+
+                try (ObjectInserter oi = repo.newObjectInserter()) {
+                    DirCache inCore = DirCache.newInCore()
+                    DirCacheBuilder builder = inCore.builder()
+
+                    def entries = files.collect { k, v ->
+                        String gitPath = k.replaceAll('^\\./+', '').replace('\\', '/').replaceAll('/+', '/')
+                        [path: gitPath, bytes: v.getBytes(StandardCharsets.UTF_8)]
+                    }.sort { a, b -> a.path <=> b.path }
+
+                    entries.each { e ->
+                        ObjectId blobId = oi.insert(Constants.OBJ_BLOB, e.bytes)
+                        DirCacheEntry dce = new DirCacheEntry(e.path)
+                        dce.setFileMode(FileMode.REGULAR_FILE)
+                        dce.setObjectId(blobId)
+                        builder.add(dce)
+                    }
+                    builder.finish()
+
+                    ObjectId treeId = inCore.writeTree(oi)
+
+                    PersonIdent who = new PersonIdent('diverged', 'diverged@example.com')
+                    CommitBuilder cb = new CommitBuilder()
+                    cb.setTreeId(treeId)
+                    cb.setAuthor(who)
+                    cb.setCommitter(who)
+                    cb.setMessage('initial diverged commit')
+                    ObjectId commitId = oi.insert(cb)
+                    oi.flush()
+
+                    String refName = Constants.R_HEADS + divergedBranch
+                    RefUpdate ru = repo.updateRef(refName)
+                    ru.setExpectedOldObjectId(ObjectId.zeroId()) // fail if it already exists
+                    ru.setNewObjectId(commitId)
+                    ru.setRefLogMessage("create orphan branch $divergedBranch", false)
+                    RefUpdate.Result result = ru.update()
+                    assert result in [RefUpdate.Result.NEW, RefUpdate.Result.FAST_FORWARD, RefUpdate.Result.FORCED]:
+                            "Ref update failed: $result"
+
+                    repo.updateRef(Constants.HEAD).link(refName)
+
+                    RefSpec spec = new RefSpec("${refName}:${refName}")
+
+                    def push = git.push().setRemote('origin').setRefSpecs(spec)
+                    assert push.call()
+                }
+            }
+        }
+        finally {
+            temp.toFile().deleteDir()
+        }
+    }
+
+    void populateRepository(String storedProjectVersion, String tag, List<String> additionalBranchNames = ['7.0.x'], Map<String, String> files = null) {
+        if (!files) {
+            files = getProjectVersionFiles(storedProjectVersion)
+        }
+
+        Path temp = Files.createTempDirectory('populate-repo')
         try {
             try (Repository repo = FileRepositoryBuilder.create(temp.resolve('.git').toFile())) {
                 repo.create()
 
                 try (Git git = Git.open(temp.toFile())) {
-                    // Example project
-                    Files.writeString(temp.resolve('README.md'), '# demo\n')
-                    Files.writeString(temp.resolve('gradle.properties'), "projectVersion=${storedProjectVersion}\n")
+                    for (Map.Entry<String, String> entry : files.entrySet()) {
+                        def fileToCreate = temp.resolve(entry.key)
+                        fileToCreate.toFile().parentFile.mkdirs()
+                        Files.writeString(fileToCreate, entry.value)
+                    }
                     assert git.add().addFilepattern('.').call()
                     assert git.commit()
                             .setAuthor('CI', 'ci@example.com')
@@ -113,18 +206,20 @@ class GitHubRepoMock implements Closeable {
                         assert git.branchCreate().setName(additionalBranch).setStartPoint('main').call()
                     }
 
-                    def tagRef = git.tag().setName(tag)
-                            .setMessage('My Release Message')
-                            .call()
-                    assert tagRef
+                    if (tag) {
+                        def tagRef = git.tag().setName(tag)
+                                .setMessage('My Release Message')
+                                .call()
+                        assert tagRef
+                    }
 
                     assert git.remoteAdd().setName('origin').setUri(new URIish(externalGitHostUrl)).call()
 
                     List<RefSpec> specs = ['main', additionalBranchNames].flatten().unique().collect { String branch ->
-                        new RefSpec("refs/heads/${branch}:refs/heads/${branch}" as String)
+                        new RefSpec("${Constants.R_HEADS + branch}:${Constants.R_HEADS + branch}" as String)
                     }
 
-                    PushCommand push = git.push()
+                    def push = git.push()
                             .setRemote('origin')
                             .setRefSpecs(specs)
                             .setPushAll()
@@ -143,35 +238,41 @@ class GitHubRepoMock implements Closeable {
         }
     }
 
+    String getInternalGitHostUrl() {
+        "http://$username:$token@$internalUrlBase/$username/widgets.git"
+    }
+
     void stageRepositoryForAction(String refName) {
         cloneRepo(actionRepoPath, refName) { Git git ->
-            String internalGitHostUrl = 'http://ci:pass@gitea:3000/ci/widgets.git'
             assert git.remoteSetUrl().setRemoteName('origin').setRemoteUri(new URIish(internalGitHostUrl)).call()
         }
     }
 
-    void setProjectVersion(String refName, String newProjectVersion) {
-        Path temp = Files.createTempDirectory('ref-project-version')
+    void storeFiles(Map<String, String> files, String refName) {
+        Path temp = Files.createTempDirectory('store-files')
         try {
             cloneRepo(temp, refName) { Git git ->
-                temp.resolve('gradle.properties').toFile().text = "projectVersion=${newProjectVersion}\n"
-
-                git.add().addFilepattern('gradle.properties').call()
+                for (Map.Entry<String, String> fileEntry : files.entrySet()) {
+                    def fileToCreate = temp.resolve(fileEntry.key)
+                    fileToCreate.toFile().parentFile.mkdirs()
+                    fileToCreate.toFile().text = fileEntry.value
+                }
+                git.add().addFilepattern('.').call()
                 assert git.add().addFilepattern('.').call()
                 assert git.commit()
                         .setAuthor('CI', 'ci@example.com')
                         .setCommitter('CI', 'ci@example.com')
                         .setSign(false)
-                        .setMessage("set project version = $newProjectVersion").call()
+                        .setMessage("store files :${files.keySet().join(',')}").call()
 
-                def tagRef = git.repository.findRef("refs/tags/$refName")
+                def tagRef = git.repository.findRef("${Constants.R_TAGS + refName}")
                 if (tagRef != null) {
                     // It's a tag: delete and recreate tag at new commit
                     git.tagDelete().setTags(refName).call()
                     git.tag().setName(refName).setMessage("Updated tag $refName").call()
                     def pushResult = git.push()
                             .setRemote('origin')
-                            .setRefSpecs(new RefSpec("refs/tags/$refName:refs/tags/$refName"))
+                            .setRefSpecs(new RefSpec("${Constants.R_TAGS + refName}:${Constants.R_TAGS + refName}"))
                             .setPushTags()
                             .setForce(true)
                             .call()
@@ -179,7 +280,7 @@ class GitHubRepoMock implements Closeable {
                 } else {
                     PushCommand push = git.push()
                             .setRemote('origin')
-                            .setRefSpecs(new RefSpec("refs/heads/$refName:refs/heads/$refName" as String))
+                            .setRefSpecs(new RefSpec("${Constants.R_HEADS + refName}:${Constants.R_HEADS + refName}" as String))
                             .setPushAll()
                             .setPushTags()
                     def pushResult = push.call()
@@ -192,13 +293,17 @@ class GitHubRepoMock implements Closeable {
         }
     }
 
+    void setProjectVersion(String refName, String newProjectVersion) {
+        storeFiles(['gradle.properties': "projectVersion=${newProjectVersion}\n"], refName)
+    }
+
     boolean branchExists(String branchName) {
         Path temp = Files.createTempDirectory('ref-project-version')
         try {
             cloneRepo(temp, branchName)
             return true
         }
-        catch(e) {
+        catch (e) {
             return false
         }
         finally {
@@ -207,21 +312,21 @@ class GitHubRepoMock implements Closeable {
     }
 
     private void cloneRepo(Path targetDirectory, String checkoutRef, Closure c = null) {
-        try(Git git = Git.cloneRepository().setURI(externalGitHostUrl).setDirectory(targetDirectory.toFile()).setCloneAllBranches(true).call()) {
+        try (Git git = Git.cloneRepository().setURI(externalGitHostUrl).setDirectory(targetDirectory.toFile()).setCloneAllBranches(true).call()) {
             git.fetch().setTagOpt(TagOpt.FETCH_TAGS).call()
 
-            if(checkoutRef != 'main') {
+            if (checkoutRef != 'main') {
                 def repo = git.getRepository()
                 def ref = repo.findRef(checkoutRef)
                 if (ref == null) {
                     // Try as remote branch
-                    ref = repo.findRef("refs/remotes/origin/$checkoutRef")
+                    ref = repo.findRef("${Constants.R_REMOTES + 'origin/' + checkoutRef}")
                 }
                 if (ref == null) {
                     throw new IllegalArgumentException("Ref 'checkoutRef' does not exist in remote repository")
                 }
 
-                if (ref.getName().startsWith('refs/tags/')) {
+                if (ref.getName().startsWith(Constants.R_TAGS)) {
                     // Checkout tag in detached HEAD
                     git.checkout().setName(checkoutRef).call()
                 } else {
@@ -237,29 +342,55 @@ class GitHubRepoMock implements Closeable {
         }
     }
 
-    String getRefProjectVersion(String refName) {
-        Path temp = Files.createTempDirectory('ref-project-version')
+    List<String> getFolders(String basePath = null, String refName) {
+        Path temp = Files.createTempDirectory('list-folders')
         try {
-            String matched = null
+            List<String> folders = []
             cloneRepo(temp, refName) { Git git ->
-                Path gradleProperties = temp.resolve('gradle.properties')
-                if (!Files.exists(gradleProperties)) {
+                Path expectedBasePath = basePath ? temp.resolve(basePath) : temp
+                if (!Files.exists(expectedBasePath)) {
                     throw new IllegalStateException(
-                            "Could not resolve 'gradle.properties' at $refName. Ref or file may not exist (or ref wasn’t fetched).");
+                            "Could not resolve '$basePath' at $refName. Ref or path may not exist (or ref wasn’t fetched).");
                 }
 
-                String contents = gradleProperties.toFile().text
-                def matcher = (contents =~ /projectVersion=(.+)/)
-                if (matcher) {
-                    matched = matcher[0][1] as String
-                } else {
-                    throw new IllegalStateException("Could not find projectVersion in 'gradle.properties' for ref $refName" as String)
-                }
+                folders = expectedBasePath.toFile().listFiles({ File pathname ->
+                    pathname.isDirectory() && pathname.name != '.git'
+                } as FileFilter).collect { it.name }
             }
-            return matched
+            return folders
         }
         finally {
             temp.toFile().deleteDir()
+        }
+    }
+
+    String getFileContents(String filename, String refName) {
+        Path temp = Files.createTempDirectory('file-contents')
+        try {
+            String contents = null
+            cloneRepo(temp, refName) { Git git ->
+                Path fileToReturn = temp.resolve(filename)
+                if (!Files.exists(fileToReturn)) {
+                    throw new IllegalStateException(
+                            "Could not resolve '$filename' at $refName. Ref or file may not exist (or ref wasn’t fetched).");
+                }
+
+                contents = fileToReturn.toFile().text
+            }
+            return contents
+        }
+        finally {
+            temp.toFile().deleteDir()
+        }
+    }
+
+    String getRefProjectVersion(String refName) {
+        String contents = getFileContents('gradle.properties', refName)
+        def matcher = (contents =~ /projectVersion=(.+)/)
+        if (matcher) {
+            return matcher[0][1] as String
+        } else {
+            throw new IllegalStateException("Could not find projectVersion in 'gradle.properties' for ref $refName" as String)
         }
     }
 

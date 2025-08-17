@@ -18,7 +18,7 @@
 #  under the License.
 #
 
-# Action will create a folder gh-pages and set that folder to track the gh-pages branch
+# Action will publish the specified documentation to the specified documentation branch
 
 set_value_or_error() {
   local value="$1"
@@ -93,7 +93,7 @@ publish_artifacts() {
     fi
   fi
 
-  echo "Publishing ${SOURCE_FOLDER} to gh-pages:${PUBLISH_PATH}"
+  echo "Publishing ${SOURCE_FOLDER} to ${DOCUMENTATION_BRANCH}:${PUBLISH_PATH}"
   mkdir -p "${PUBLISH_PATH}"
   cp -r "../${SOURCE_FOLDER}/." "${PUBLISH_PATH}"
   git add --verbose "${PUBLISH_PATH}"/*
@@ -132,10 +132,12 @@ is_highest_version() {
 
 set -e
 
-# GH_TOKEN - the token to access the github repository, can be GITHUB_TOKEN if the same repo and permissions are set correctly
-set_value_or_error "${GH_TOKEN}" "" "GH_TOKEN"
+set_value_or_error "${DOCUMENTATION_BRANCH}" 'gh-pages' 'DOCUMENTATION_BRANCH'
 
-# GITHUB_USER_NAME - the username to commit to gh-pages branch, defaults to GITHUB_ACTOR (assumes permissions are set correctly)
+# GH_TOKEN - the token to access the github repository, can be GITHUB_TOKEN if the same repo and permissions are set correctly
+set_value_or_error "${GH_TOKEN}" "${GITHUB_TOKEN}" "GH_TOKEN"
+
+# GITHUB_USER_NAME - the username to commit to documentation branch, defaults to GITHUB_ACTOR (assumes permissions are set correctly)
 set_value_or_error "${GITHUB_USER_NAME}" "${GITHUB_ACTOR}" "GITHUB_USER_NAME"
 
 # LAST_RELEASE_FOLDER - when a release is performed, instead of just copying it to a version number, copy it to this static folder name
@@ -198,9 +200,11 @@ if [[ "$SKIP_SNAPSHOT_FOLDER" == "true" && "$GRADLE_PUBLISH_RELEASE" == "false" 
   exit 0
 fi
 
-GIT_REPO_URL="https://${GITHUB_USER_NAME}:${GH_TOKEN}@github.com/${TARGET_REPOSITORY}.git"
+set_value_or_error "${GITHUB_URL_BASE}" "github.com" "GITHUB_URL_BASE"
+set_value_or_error "${GIT_TRANSFER_PROTOCOL}" "https" "GIT_TRANSFER_PROTOCOL"
+GIT_REPO_URL="${GIT_TRANSFER_PROTOCOL}://${GITHUB_USER_NAME}:${GH_TOKEN}@${GITHUB_URL_BASE}/${TARGET_REPOSITORY}.git"
 
-# Initialize a Git Repository under a separate location from the existing checkout that will be the gh-pages branch
+# Initialize a Git Repository under a separate location from the existing checkout that will be the documentation branch
 cd "${GITHUB_WORKSPACE}"
 git init
 git config --global user.email "${GITHUB_USER_NAME}@users.noreply.github.com"
@@ -209,28 +213,35 @@ git config --global http.version HTTP/1.1
 git config --global http.postBuffer 157286400
 
 # Create or checkout the documentation branch
-if git ls-remote --heads "${GIT_REPO_URL}" gh-pages | grep -q "refs/heads/gh-pages"; then
-  echo "gh-pages branch found, cloning"
-  git clone "${GIT_REPO_URL}" gh-pages --branch gh-pages --single-branch
-  cd gh-pages
+if git ls-remote --heads "${GIT_REPO_URL}" "${DOCUMENTATION_BRANCH}" | grep -q "refs/heads/${DOCUMENTATION_BRANCH}"; then
+  echo "::group::Checkout documentation branch"
+  echo "documentation branch found, cloning"
+  git clone "${GIT_REPO_URL}" "${DOCUMENTATION_BRANCH}" --branch "${DOCUMENTATION_BRANCH}" --single-branch
+  cd ${DOCUMENTATION_BRANCH}
+  echo "::endgroup::"
 else
-  echo "Creating gh-pages branch as it does not exist"
-  mkdir gh-pages
-  cd gh-pages
+  echo "::group::Creating documentation branch"
+  echo "Creating documentation branch ${DOCUMENTATION_BRANCH} as it does not exist"
+  mkdir "${DOCUMENTATION_BRANCH}"
+  cd "${DOCUMENTATION_BRANCH}"
   git init
-  git checkout -b gh-pages
-  git remote add origin "${GIT_REPO_URL}" 
+  git checkout -b "${DOCUMENTATION_BRANCH}"
+  git remote add origin "${GIT_REPO_URL}"
+  echo "::endgroup::"
 fi
 
 # grails repos have a convention that they create a ghpages.html to replace the root index.html
 if [[ -f "../${SOURCE_FOLDER}/ghpages.html" ]]; then
+  echo "::group::Staging root index.html"
   echo "${SOURCE_FOLDER}/ghpages.html detected, replacing root index.html"
   cp "../${SOURCE_FOLDER}/ghpages.html" index.html
   git add index.html
+  echo "::endgroup::"
 fi
 
 # stage the documents
 if [[ "$GRADLE_PUBLISH_RELEASE" == "false" ]]; then
+  echo "::group::Publishing Snapshot"
   echo "Snapshot detected"
 
   # Subfolder support
@@ -242,11 +253,12 @@ if [[ "$GRADLE_PUBLISH_RELEASE" == "false" ]]; then
   fi
 
   publish_artifacts
+  echo "::endgroup::"
 else
   echo "Release detected"
 
   # Publish to the specific version folder
-  echo "::group::Publishing Specific Version: ${VERSION}"
+  echo "::group::Publishing Specific Release Version: ${VERSION}"
   BASE_PUBLISH_PATH="./${VERSION}"
   if [ -n "${TARGET_SUBFOLDER}" ]; then
     PUBLISH_PATH="./${VERSION}/${TARGET_SUBFOLDER}"
@@ -254,13 +266,13 @@ else
     PUBLISH_PATH="./${VERSION}"
   fi
   publish_artifacts
-  echo "Published documentation to ${PUBLISH_PATH}"
+  echo "Published release documentation to ${PUBLISH_PATH}"
   echo "::endgroup::"
 
   # Publish to the generic version folder
   genericVersionFolder="${VERSION%.*}"
   genericVersionFolder="${genericVersionFolder}.x"
-  echo "::group::Publishing Generic Version: ${genericVersionFolder}"
+  echo "::group::Publishing Generic Release Version: ${genericVersionFolder}"
   BASE_PUBLISH_PATH="./${genericVersionFolder}"
   if [ -n "${TARGET_SUBFOLDER}" ]; then
     PUBLISH_PATH="./${genericVersionFolder}/${TARGET_SUBFOLDER}"
@@ -268,7 +280,7 @@ else
     PUBLISH_PATH="./${genericVersionFolder}"
   fi
   publish_artifacts
-  echo "Published documentation to ${genericVersionFolder}"
+  echo "Published release documentation to ${genericVersionFolder}"
   echo "::endgroup::"
 
   # Publish to the latest release folder if needed 
@@ -285,17 +297,23 @@ else
       echo "Published a copy of documentation to ${PUBLISH_PATH}"
       echo "::endgroup::"
     else
+      echo "::group::Skipped Latest Release Documentation - not highest"
       echo "Skipping documentation copy to '${LAST_RELEASE_FOLDER}' because ${genericVersionFolder} is NOT the highest."
+      echo "::endgroup::"
     fi
-  else 
+  else
+    echo "::group::Skipped Latest Release Documentation"
     echo "Skipping documentation copy to ${LAST_RELEASE_FOLDER}"
+    echo "::endgroup::"
   fi
 fi
 
+echo "::group::Committing Changes"
 echo "Detected the following delta for commit:"
 git status
 
 echo "Committing changes."
-git commit -m "Deploying to gh-pages - $(date +"%T")" --quiet --allow-empty
-git push "${GIT_REPO_URL}" gh-pages
+git commit -m "Deploying to documentation branch - $(date +"%T")" --quiet --allow-empty
+git push "${GIT_REPO_URL}" "${DOCUMENTATION_BRANCH}"
 echo "Deployment successful!"
+echo "::endgroup::"
