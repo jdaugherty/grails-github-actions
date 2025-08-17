@@ -28,6 +28,7 @@ tasks.named('rat') {
             '**/build/**', // build directories
             'buildSrc/build/**', // build directories
             '**/.gradle/**', '**/wrapper/**', 'gradlew*',  // gradle wrapper files excluded from src zip
+            '**/increment_version.sh' // documented as MIT code in the license
     ]
     // logger.lifecycle("Excludes for RAT task: ${allExcludes.join(', \n')}")
     excludes = allExcludes
