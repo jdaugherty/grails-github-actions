@@ -30,7 +30,6 @@ Actions include:
 2. `deploy-github-pages` - handles publishing documentation to GitHub Pages for both snapshots & releases.
 3. `post-release` - assists in merging tagged changes back to the target branch & bumping to the next development version.
 4. `export-gradle-properties` - exposes selected Gradle properties as environment variables.
-5. `release-notes` - updates draft GitHub Releases with the latest changes.
 
 ## Who can use these actions
 
