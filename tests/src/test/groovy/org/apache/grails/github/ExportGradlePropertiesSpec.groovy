@@ -48,7 +48,7 @@ other=another
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', null, [], ['gradle.properties': gradleProperties])
-        gitRepo.stageRepositoryForAction('main')
+        gitRepo.stageRepositoryForAction('main', false)
 
         and:
         def env = action.getDefaultEnvironment()

@@ -56,7 +56,7 @@ class DeployGithubPagesSpec extends Specification {
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', null, [], getProjectFiles())
-        gitRepo.stageRepositoryForAction('main')
+        gitRepo.stageRepositoryForAction('main', false)
 
         and:
         def env = getDefaultEnvironment(action, gitRepo)
@@ -112,7 +112,7 @@ class DeployGithubPagesSpec extends Specification {
                 'index.html': 'will be replaced',
                 'snapshot/index.html': 'will also be replaced'
         ], 'gh-pages')
-        gitRepo.stageRepositoryForAction('main')
+        gitRepo.stageRepositoryForAction('main', false)
 
         and:
         def env = getDefaultEnvironment(action, gitRepo)
@@ -167,7 +167,7 @@ class DeployGithubPagesSpec extends Specification {
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', null, [], getProjectFiles())
-        gitRepo.stageRepositoryForAction('main')
+        gitRepo.stageRepositoryForAction('main', false)
 
         and:
         def env = getDefaultEnvironment(action, gitRepo)
@@ -215,7 +215,7 @@ class DeployGithubPagesSpec extends Specification {
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', null, [], getProjectFiles())
-        gitRepo.stageRepositoryForAction('main')
+        gitRepo.stageRepositoryForAction('main', false)
 
         and:
         def env = getDefaultEnvironment(action, gitRepo)
@@ -269,7 +269,7 @@ class DeployGithubPagesSpec extends Specification {
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', null, [], getProjectFiles())
-        gitRepo.stageRepositoryForAction('main')
+        gitRepo.stageRepositoryForAction('main', false)
 
         and:
         def env = getDefaultEnvironment(action, gitRepo)
@@ -331,7 +331,7 @@ class DeployGithubPagesSpec extends Specification {
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', null, [], getProjectFiles())
-        gitRepo.stageRepositoryForAction('main')
+        gitRepo.stageRepositoryForAction('main', false)
 
         and:
         def env = getDefaultEnvironment(action, gitRepo)
@@ -394,7 +394,7 @@ class DeployGithubPagesSpec extends Specification {
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', null, [], getProjectFiles())
-        gitRepo.stageRepositoryForAction('main')
+        gitRepo.stageRepositoryForAction('main', false)
 
         and:
         def env = getDefaultEnvironment(action, gitRepo)
