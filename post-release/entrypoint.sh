@@ -94,7 +94,7 @@ echo "::group::Close Milestone (if it exists)"
 set +e
 echo -n "Retrieving current milestone number: "
 milestone_number=`curl -s ${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/milestones | jq -c ".[] | select (.title == \"${RELEASE_VERSION}\") | .number" | sed -e 's/"//g'`
-echo $milestone_number
+echo "Found Milestone Id: $milestone_number"
 echo "Closing current milestone"
 curl -s --request PATCH -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Content-Type: application/json" ${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/milestones/$milestone_number --data '{"state":"closed"}'
 set -e
@@ -123,10 +123,12 @@ echo "Pruned Target Branch is ${TARGET_BRANCH}"
 git checkout "${TARGET_BRANCH}"
 echo "::endgroup::"
 
-echo "::group::Update to next version"
+echo "::group::Creating Merge Branch from ${RELEASE_TAG_PREFIX}${RELEASE_VERSION}"
 MERGE_BRANCH_NAME="merge-back-${RELEASE_VERSION}"
-git checkout -b "${MERGE_BRANCH_NAME}" "${TARGET_BRANCH}"
+git checkout -b "${MERGE_BRANCH_NAME}" "${RELEASE_TAG_PREFIX}${RELEASE_VERSION}"
+echo "::endgroup::"
 
+echo "::group::Add commit to update to next version"
 echo "Setting new snapshot version"
 sed -i "s/^projectVersion\=.*$/projectVersion\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
 sed -i "s/^version\=.*$/version\=${NEXT_VERSION}-SNAPSHOT/" gradle.properties
@@ -146,13 +148,14 @@ fi
 
 if git diff-index --quiet HEAD --; then
   git checkout --
-  echo "::notice:: No version change – nothing to commit, branch/PR skipped."
-  exit 0
+  echo "::notice:: No version change – nothing to commit, skipping commit."
+else
+	echo "Committing next version ${NEXT_VERSION}-SNAPSHOT"
+  git commit -m "[skip ci] Bump version to ${NEXT_VERSION}-SNAPSHOT"
 fi
+echo "::endgroup::"
 
-echo "Committing next version ${NEXT_VERSION}-SNAPSHOT"
-git commit -m "[skip ci] Bump version to ${NEXT_VERSION}-SNAPSHOT"
-
+echo "::group::Pushing Merge Branch ${MERGE_BRANCH_NAME}"
 echo "Pushing changes to side branch: ${MERGE_BRANCH_NAME}"
 git push --force origin "${MERGE_BRANCH_NAME}"
 echo "::endgroup::"

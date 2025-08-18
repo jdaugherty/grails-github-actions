@@ -18,6 +18,7 @@
  */
 package org.apache.grails.github.mocks
 
+import org.eclipse.jgit.api.FetchCommand
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.PushCommand
 import org.eclipse.jgit.dircache.DirCache
@@ -31,7 +32,10 @@ import org.eclipse.jgit.lib.ObjectInserter
 import org.eclipse.jgit.lib.PersonIdent
 import org.eclipse.jgit.lib.RefUpdate
 import org.eclipse.jgit.lib.Repository
+import org.eclipse.jgit.lib.StoredConfig
+import org.eclipse.jgit.lib.SubmoduleConfig
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
+import org.eclipse.jgit.transport.FetchResult
 import org.eclipse.jgit.transport.RefSpec
 import org.eclipse.jgit.transport.TagOpt
 import org.eclipse.jgit.transport.URIish
@@ -242,8 +246,42 @@ class GitHubRepoMock implements Closeable {
         "http://$username:$token@$internalUrlBase/$username/widgets.git"
     }
 
-    void stageRepositoryForAction(String refName) {
-        cloneRepo(actionRepoPath, refName) { Git git ->
+    void stageRepositoryForAction(String refName, boolean isTag) {
+        try (Git git = Git.init().setDirectory(actionRepoPath.toFile()).call()) {
+            Repository repo = git.getRepository();
+            StoredConfig cfg = repo.getConfig();
+
+            // git remote add origin externalGitHostUrl
+            cfg.setString("remote", "origin", "url", externalGitHostUrl)
+            cfg.setStringList("remote", "origin", "fetch", Arrays.asList("+refs/heads/*:refs/remotes/origin/*"))
+            cfg.save()
+
+            // bug with jgit, the '*' isn't expanding so use the exact instead. Note: jgit seems to be strict, while the git commandline ignores mismatches
+            List<RefSpec> refSpecs = [isTag ? new RefSpec("+refs/tags/$refName:refs/tags/$refName") : new RefSpec("+refs/heads/$refName:refs/remotes/origin/$refName")]
+
+            // git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin \
+            //   '+refs/heads/v7.0.0-RC1*:refs/remotes/origin/v7.0.0-RC1*' \
+            //   '+refs/tags/v7.0.0-RC1*:refs/tags/v7.0.0-RC1*'
+            FetchCommand fetch = git.fetch()
+                    .setRemote("origin")
+                    .setRefSpecs(
+                            refSpecs
+                    )
+                    .setTagOpt(TagOpt.NO_TAGS)
+                    .setRemoveDeletedRefs(true)
+                    .setRecurseSubmodules(SubmoduleConfig.FetchRecurseSubmodulesMode.NO)
+            if (isTag) {
+                fetch.setDepth(1)
+            }
+            assert fetch.call()
+
+            // git checkout --force refs/tags/v7.0.0-RC1
+            git.checkout()
+                    .setName(isTag ? "refs/tags/$refName" : "refs/remotes/origin/$refName") // detached HEAD if a tag
+                    .setForced(true)
+                    .call()
+
+            // reset to internal git url since the container will be connecting to a different endpoint
             assert git.remoteSetUrl().setRemoteName('origin').setRemoteUri(new URIish(internalGitHostUrl)).call()
         }
     }

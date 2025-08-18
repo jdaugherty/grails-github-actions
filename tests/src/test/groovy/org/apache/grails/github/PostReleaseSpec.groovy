@@ -39,7 +39,7 @@ class PostReleaseSpec extends Specification {
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', 'rel-7.0.0-RC1', ['7.0.x'])
         gitRepo.setProjectVersion('rel-7.0.0-RC1', '7.0.0-RC1')
-        gitRepo.stageRepositoryForAction('rel-7.0.0-RC1')
+        gitRepo.stageRepositoryForAction('rel-7.0.0-RC1', true)
 
         and:
         def env = action.getDefaultEnvironment()
@@ -95,7 +95,7 @@ class PostReleaseSpec extends Specification {
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', 'v7.0.0-RC1', ['7.0.x'])
         gitRepo.setProjectVersion('v7.0.0-RC1', '7.0.0-RC1')
-        gitRepo.stageRepositoryForAction('v7.0.0-RC1')
+        gitRepo.stageRepositoryForAction('v7.0.0-RC1', true)
 
         and:
         def env = action.getDefaultEnvironment()
@@ -150,7 +150,7 @@ class PostReleaseSpec extends Specification {
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', 'v7.0.0-RC1', [])
         gitRepo.setProjectVersion('v7.0.0-RC1', '7.0.0-RC1')
-        gitRepo.stageRepositoryForAction('v7.0.0-RC1')
+        gitRepo.stageRepositoryForAction('v7.0.0-RC1', true)
 
         and:
         def env = action.getDefaultEnvironment()

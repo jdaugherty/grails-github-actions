@@ -42,6 +42,16 @@ class GitHubApiMock implements Closeable {
                         .withHeader("Content-Type", "application/json")
                         .withBody("{\"id\":123,\"draft\":false}")))
 
+
+        githubApi.stubFor(WireMock.patch(WireMock.urlEqualTo("/repos/${release.repository}/milestones/1"))
+                .withHeader("Authorization", WireMock.matching("(?i)Bearer\\s+.+")) // accept any bearer token
+                .withHeader("Content-Type", WireMock.containing("application/json"))
+                .withRequestBody(WireMock.equalToJson("{\"state\": \"closed\"}", true, true)) // ignore spacing/field order
+                .willReturn(WireMock.aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"id\":1,\"state\":closed}")))
+
         githubApi.stubFor(WireMock.get(WireMock.urlPathEqualTo("/repos/${release.repository}/milestones"))
                 .willReturn(WireMock.aResponse()
                         .withStatus(200)
@@ -55,7 +65,7 @@ class GitHubApiMock implements Closeable {
     "id": 13156954,
     "node_id": "MI_kwDOJ-ZrdM4AyMJa",
     "number": 1,
-    "title": "grails:${release.version}",
+    "title": "${release.version}",
     "description": null,
     "creator": {
       "login": "jamesfredley",

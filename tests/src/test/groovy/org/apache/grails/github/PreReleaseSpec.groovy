@@ -37,7 +37,7 @@ class PreReleaseSpec extends Specification {
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', 'v7.0.0-RC1', [])
-        gitRepo.stageRepositoryForAction('v7.0.0-RC1')
+        gitRepo.stageRepositoryForAction('v7.0.0-RC1', true)
 
         and:
         def env = action.getDefaultEnvironment()
@@ -85,7 +85,7 @@ class PreReleaseSpec extends Specification {
         GitHubRepoMock gitRepo = new GitHubRepoMock(action.workspacePath, net)
         gitRepo.init()
         gitRepo.populateRepository('7.0.0-SNAPSHOT', 'rel-7.0.0-RC1', [])
-        gitRepo.stageRepositoryForAction('rel-7.0.0-RC1')
+        gitRepo.stageRepositoryForAction('rel-7.0.0-RC1', true)
 
         and:
         def env = action.getDefaultEnvironment()
