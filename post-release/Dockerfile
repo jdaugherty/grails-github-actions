@@ -18,7 +18,7 @@
 #
 FROM alpine:3
 
-RUN apk add --no-cache curl jq git bash
+RUN apk add --no-cache curl jq git bash ca-certificates github-cli
 
 COPY *.sh /
 
